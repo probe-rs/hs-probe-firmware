@@ -13,7 +13,7 @@ fn main() -> ! {
     rtt_init_print!();
 
     let cp = cortex_m::Peripherals::take().unwrap();
-    let p = stm32f7xx_hal::device::Peripherals::take().unwrap();
+    let p = stm32f7xx_hal::pac::Peripherals::take().unwrap();
 
     let rcc = p.RCC.constrain();
     let clocks = rcc.cfgr
