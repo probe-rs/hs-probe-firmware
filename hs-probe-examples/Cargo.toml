@@ -11,3 +11,10 @@ stm32f7xx-hal = { version = "0.2.0", features = ["stm32f723"] }
 embedded-hal = "0.2.3"
 rtt-target = { version = "0.2.0", features = ["cortex-m"] }
 panic-rtt-target = { version = "0.1.0", features = ["cortex-m"] }
+usb-device = "0.2.5"
+usbd-serial = "0.1.0"
+
+[features]
+default = ["fs"]
+fs = ["stm32f7xx-hal/usb_fs"]
+hs = []
