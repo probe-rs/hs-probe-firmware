@@ -1,4 +1,8 @@
 [workspace]
 members = [
     "hs-probe-examples",
+    "stm32f7xx-hal",
 ]
+
+[patch.crates-io]
+stm32f7xx-hal = { path = "stm32f7xx-hal" }
