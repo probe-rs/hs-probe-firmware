@@ -12,7 +12,9 @@ fn main() -> ! {
     rtt_init_print!();
 
     let rcc = RCC::new(stm32ral::rcc::RCC::take().unwrap());
-    rcc.setup(CoreFrequency::F72MHz);
+    unsafe {
+        rcc.setup(CoreFrequency::F72MHz);
+    }
 
     let rcc = unsafe { &*stm32f7xx_hal::pac::RCC::ptr() };
     let cfg = rcc.pllcfgr.read();

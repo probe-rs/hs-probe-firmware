@@ -11,7 +11,10 @@ impl RCC {
     }
 
     /// Set up the device, enabling all required clocks
-    pub fn setup(&self, frequency: CoreFrequency) {
+    ///
+    /// Unsafety: this function should be called from the main context.
+    /// No other contexts should be active at the same time.
+    pub unsafe fn setup(&self, frequency: CoreFrequency) {
         // Turn on HSI
         modify_reg!(rcc, self.rcc, CR, HSION: On);
         // Wait for HSI to be ready
@@ -84,9 +87,7 @@ impl RCC {
         while read_reg!(rcc, self.rcc, CR, PLLRDY == NotReady) {}
 
         // Adjust flash wait states
-        let flash = flash::FLASH::take().unwrap();
-        modify_reg!(flash, flash, ACR, LATENCY: flash_latency);
-        flash::FLASH::release(flash);
+        modify_reg!(flash, &*flash::FLASH, ACR, LATENCY: flash_latency);
 
         // Swap system clock to PLL
         modify_reg!(rcc, self.rcc, CFGR, SW: PLL);

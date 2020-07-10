@@ -12,7 +12,9 @@ fn main() -> ! {
     rtt_init_print!();
 
     let rcc = RCC::new(stm32ral::rcc::RCC::take().unwrap());
-    rcc.setup(CoreFrequency::F48MHz);
+    unsafe {
+        rcc.setup(CoreFrequency::F48MHz);
+    }
 
     let gpioc = GPIO::new(stm32ral::gpio::GPIOC::take().unwrap());
     let led = gpioc.pin(10);
