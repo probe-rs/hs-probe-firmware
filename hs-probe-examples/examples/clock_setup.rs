@@ -6,13 +6,12 @@ use cortex_m_rt::entry;
 use rtt_target::{rtt_init_print, rprintln};
 use stm32f7xx_hal::prelude::*;
 use stm32f7xx_hal::rcc::{HSEClock, HSEClockMode};
-use stm32f7xx_hal::delay::Delay;
+
 
 #[entry]
 fn main() -> ! {
     rtt_init_print!();
 
-    let cp = cortex_m::Peripherals::take().unwrap();
     let p = stm32f7xx_hal::pac::Peripherals::take().unwrap();
 
     let rcc = p.RCC.constrain();
