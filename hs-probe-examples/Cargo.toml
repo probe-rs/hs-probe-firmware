@@ -13,6 +13,8 @@ rtt-target = { version = "0.2.0", features = ["cortex-m"] }
 panic-rtt-target = { version = "0.1.0", features = ["cortex-m"] }
 usb-device = "0.2.5"
 usbd-serial = "0.1.0"
+stm32ral = "0.4.1"
+hs-probe-bsp = { path = "../hs-probe-bsp" }
 
 [features]
 default = ["fs"]
