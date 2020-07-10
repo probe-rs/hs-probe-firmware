@@ -1,0 +1,8 @@
+[package]
+name = "hs-probe-bsp"
+version = "0.1.0"
+authors = ["Vadim Kaushan <admin@disasm.info>"]
+edition = "2018"
+
+[dependencies]
+stm32ral = { version = "0.4.1", features = ["stm32f7x3"] }
