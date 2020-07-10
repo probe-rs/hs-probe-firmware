@@ -14,7 +14,7 @@ impl RCC {
     ///
     /// Unsafety: this function should be called from the main context.
     /// No other contexts should be active at the same time.
-    pub unsafe fn setup(&self, frequency: CoreFrequency) {
+    pub unsafe fn setup(&self, frequency: CoreFrequency) -> Clocks {
         // Turn on HSI
         modify_reg!(rcc, self.rcc, CR, HSION: On);
         // Wait for HSI to be ready
@@ -51,24 +51,28 @@ impl RCC {
         let pllp;
         let pllq;
         let flash_latency;
+        let sysclk;
         match frequency {
             CoreFrequency::F48MHz => {
                 plln = 96;
                 pllp = 0b01; // /4
                 pllq = 4;
                 flash_latency = 0b0001;
+                sysclk = 48_000_000;
             }
             CoreFrequency::F72MHz => {
                 plln = 144;
                 pllp = 0b01; // /4
                 pllq = 6;
                 flash_latency = 0b0010;
+                sysclk = 72_000_000;
             }
             CoreFrequency::F216MHz => {
                 plln = 216;
                 pllp = 0b00; // /2
                 pllq = 9;
                 flash_latency = 0b0111;
+                sysclk = 216_000_000;
             }
         }
 
@@ -99,6 +103,10 @@ impl RCC {
 
         // Enable peripheral clocks
         modify_reg!(rcc, self.rcc, AHB1ENR, GPIOAEN: Enabled, GPIOCEN: Enabled);
+
+        Clocks {
+            sysclk
+        }
     }
 }
 
@@ -107,4 +115,26 @@ pub enum CoreFrequency {
     F48MHz,
     F72MHz,
     F216MHz,
+}
+
+pub struct Clocks {
+    sysclk: u32,
+}
+
+impl Clocks {
+    pub fn hclk(&self) -> u32 {
+        let rcc = unsafe { &*rcc::RCC };
+        let hpre = read_reg!(rcc, rcc, CFGR, HPRE);
+        match hpre {
+            0b1000 => self.sysclk / 2,
+            0b1001 => self.sysclk / 4,
+            0b1010 => self.sysclk / 8,
+            0b1011 => self.sysclk / 16,
+            0b1100 => self.sysclk / 64,
+            0b1101 => self.sysclk / 128,
+            0b1110 => self.sysclk / 256,
+            0b1111 => self.sysclk / 512,
+            _ => self.sysclk,
+        }
+    }
 }
