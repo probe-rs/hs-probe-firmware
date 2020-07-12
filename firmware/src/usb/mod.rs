@@ -102,7 +102,7 @@ impl USB {
                 let device = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x1209, 0xFF50))
                     .manufacturer("AGG")
                     .product("FFP r1 with CMSIS-DAP Support")
-                    .serial_number(stm32_device_signature::device_id_hex())
+                    .serial_number("TEST")
                     .device_class(0)
                     .build();
 
