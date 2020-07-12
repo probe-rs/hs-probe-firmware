@@ -19,9 +19,16 @@ fn main() -> ! {
     let usb_pwrclk = stm32ral::otg_fs_pwrclk::OTG_FS_PWRCLK::take().unwrap();
     let mut usb = crate::usb::USB::new(usb_global, usb_device, usb_pwrclk);
 
+    // Create App instance with the HAL instances
+    let mut app = app::App::new(&rcc, &mut usb);
+
     rprintln!("Starting...");
 
+    // Initialise application, including system peripherals
+    unsafe { app.setup() };
+
     loop {
-        continue;
+        // Process events
+        app.poll();
     }
 }
