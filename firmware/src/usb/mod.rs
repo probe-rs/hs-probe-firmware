@@ -10,6 +10,12 @@ use usb_device::prelude::*;
 use usb_device::bus::UsbBusAllocator;
 use usbd_serial::SerialPort;
 
+mod dap_v1;
+mod dap_v2;
+
+use dap_v1::CmsisDapV1;
+use dap_v2::CmsisDapV2;
+
 
 struct UninitializedUSB {
     global: otg_fs_global::Instance,
@@ -19,6 +25,8 @@ struct UninitializedUSB {
 
 struct InitializedUSB {
     device: UsbDevice<'static, UsbBusType>,
+    dap_v1: CmsisDapV1<'static, UsbBusType>,
+    dap_v2: CmsisDapV2<'static, UsbBusType>,
     serial: SerialPort<'static, UsbBusType>,
 }
 
@@ -70,6 +78,8 @@ impl USB {
                 let usb_bus = USB_BUS.as_ref().unwrap();
 
                 let serial = SerialPort::new(&usb_bus);
+                let dap_v1 = CmsisDapV1::new(&usb_bus);
+                let dap_v2 = CmsisDapV2::new(&usb_bus);
 
                 let device = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x1209, 0xFF50))
                     .manufacturer("AGG")
@@ -80,6 +90,8 @@ impl USB {
 
                 let usb = InitializedUSB {
                     device,
+                    dap_v1,
+                    dap_v2,
                     serial,
                 };
                 self.state = State::Initialized(usb)
