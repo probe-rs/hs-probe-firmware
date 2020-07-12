@@ -131,7 +131,7 @@ impl USB {
     /// triggering until all are processed.
     pub fn interrupt(&mut self) -> Option<Request> {
         let usb = self.state.as_initialized_mut();
-        if usb.device.poll(&mut [&mut usb.serial, &mut usb.dap_v1, &mut usb.dap_v2]) {
+        if usb.device.poll(&mut [&mut usb.dap_v1, &mut usb.dap_v2, &mut usb.serial]) {
             let r = usb.dap_v1.process();
             if r.is_some() {
                 return r;
