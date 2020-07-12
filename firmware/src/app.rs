@@ -8,13 +8,18 @@ pub enum Request {
 
 pub struct App<'a> {
     rcc: &'a bsp::rcc::RCC,
+    pins: &'a bsp::gpio::Pins<'a>,
     usb: &'a mut crate::usb::USB,
 }
 
 impl<'a> App<'a> {
-    pub fn new(rcc: &'a bsp::rcc::RCC, usb: &'a mut crate::usb::USB) -> Self {
+    pub fn new(rcc: &'a bsp::rcc::RCC,
+               pins: &'a bsp::gpio::Pins<'a>,
+               usb: &'a mut crate::usb::USB
+    ) -> Self {
         App {
             rcc,
+            pins,
             usb,
         }
     }
@@ -24,6 +29,8 @@ impl<'a> App<'a> {
     pub unsafe fn setup(&mut self) {
         // Configure system clock
         let clocks = self.rcc.setup(CoreFrequency::F72MHz);
+        // Configure GPIOs
+        self.pins.setup();
         // Configure USB peripheral and connect to host
         self.usb.setup(&clocks);
     }

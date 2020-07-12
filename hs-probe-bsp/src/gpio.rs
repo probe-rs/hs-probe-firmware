@@ -335,4 +335,29 @@ impl<'a> Pin<'a> {
 
 pub struct Pins<'a> {
     pub led: Pin<'a>,
+    pub usb_dm: Pin<'a>,
+    pub usb_dp: Pin<'a>,
+}
+
+impl<'a> Pins<'a> {
+    /// Configure I/O pins
+    pub fn setup(&self) {
+        // Open-drain output to LED (active low).
+        self.led
+            .set_high()
+            .set_otype_opendrain()
+            .set_ospeed_low()
+            .set_mode_output();
+
+        self.usb_dm
+            .set_mode_alternate()
+            .set_af(10)
+            .set_otype_pushpull()
+            .set_ospeed_veryhigh();
+        self.usb_dp
+            .set_mode_alternate()
+            .set_af(10)
+            .set_otype_pushpull()
+            .set_ospeed_veryhigh();
+    }
 }
