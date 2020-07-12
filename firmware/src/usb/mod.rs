@@ -37,7 +37,15 @@ enum State {
 }
 
 impl State {
-    pub fn initialized(&mut self) -> &mut InitializedUSB {
+    pub fn as_initialized(&self) -> &InitializedUSB {
+        if let State::Initialized(initialized) = self {
+            return initialized;
+        } else {
+            panic!("USB is not initialized yet");
+        }
+    }
+
+    pub fn as_initialized_mut(&mut self) -> &mut InitializedUSB {
         if let State::Initialized(initialized) = self {
             return initialized;
         } else {
@@ -122,7 +130,7 @@ impl USB {
     /// it processes; if any are unprocessed the USB interrupt keeps
     /// triggering until all are processed.
     pub fn interrupt(&mut self) -> Option<Request> {
-        let usb = self.state.initialized();
+        let usb = self.state.as_initialized_mut();
         if usb.device.poll(&mut [&mut usb.serial, &mut usb.dap_v1, &mut usb.dap_v2]) {
             let r = usb.dap_v1.process();
             if r.is_some() {
@@ -139,33 +147,39 @@ impl USB {
 
     /// Transmit a DAP report back over the DAPv1 HID interface
     pub fn dap1_reply(&mut self, data: &[u8]) {
-        let usb = self.state.initialized();
-        usb.dap_v1.write_packet(data).unwrap();
+        let usb = self.state.as_initialized_mut();
+        usb.dap_v1.write_packet(data).expect("DAPv1 EP write failed");
     }
 
     /// Transmit a DAP report back over the DAPv2 bulk interface
     pub fn dap2_reply(&mut self, data: &[u8]) {
-        let usb = self.state.initialized();
-        usb.dap_v1.write_packet(data).unwrap();
+        let usb = self.state.as_initialized_mut();
+        usb.dap_v1.write_packet(data).expect("DAPv2 EP write failed");
     }
 
     /// Check if SWO endpoint is currently busy transmitting data
     pub fn dap2_swo_is_busy(&self) -> bool {
-        todo!()
+        let usb = self.state.as_initialized();
+        usb.dap_v2.trace_busy()
     }
 
     /// Transmit SWO streaming data back over the DAPv2 bulk interface
     pub fn dap2_stream_swo(&mut self, data: &[u8]) {
-        todo!()
+        let usb = self.state.as_initialized_mut();
+        usb.dap_v2.trace_write(data).expect("trace EP write failed");
     }
 
     /// Indicate we can currently receive DAP requests
     pub fn dap_enable(&mut self) {
-        todo!()
+        let usb = self.state.as_initialized_mut();
+        usb.dap_v1.rx_valid();
+        usb.dap_v2.rx_valid();
     }
 
     /// Indicate we cannot currently receive DAP requests
     pub fn dap_disable(&mut self) {
-        todo!()
+        let usb = self.state.as_initialized_mut();
+        usb.dap_v1.rx_stall();
+        usb.dap_v2.rx_stall();
     }
 }
