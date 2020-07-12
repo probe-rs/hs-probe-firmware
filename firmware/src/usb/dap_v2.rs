@@ -1,5 +1,6 @@
 use usb_device::class_prelude::*;
 use usb_device::Result;
+use crate::app::Request;
 
 pub struct CmsisDapV2<'a, B: UsbBus> {
     interface: InterfaceNumber,
@@ -16,6 +17,21 @@ impl<B: UsbBus> CmsisDapV2<'_, B> {
             write_ep: alloc.alloc(Some(EndpointAddress::from(0x81)), EndpointType::Bulk, 64, 0).expect("alloc_ep failed"),
             trace_ep: alloc.alloc(Some(EndpointAddress::from(0x82)), EndpointType::Bulk, 64, 0).expect("alloc_ep failed"),
         }
+    }
+
+    pub fn process(&mut self) -> Option<Request> {
+        let mut buf = [0u8; 64];
+        match self.read_ep.read(&mut buf) {
+            Ok(size) if size > 0 => Some(Request::DAP2Command((buf, size))),
+            _ => None,
+        }
+    }
+
+    pub fn write_packet(&mut self, data: &[u8]) -> Result<()> {
+        if data.len() > self.write_ep.max_packet_size() as usize {
+            return Err(UsbError::BufferOverflow);
+        }
+        self.write_ep.write(&data).map(|_| ())
     }
 }
 

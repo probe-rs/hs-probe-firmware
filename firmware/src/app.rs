@@ -2,6 +2,8 @@ use hs_probe_bsp as bsp;
 use hs_probe_bsp::rcc::CoreFrequency;
 
 pub enum Request {
+    DAP1Command(([u8; 64], usize)),
+    DAP2Command(([u8; 64], usize)),
 }
 
 pub struct App<'a> {
@@ -27,5 +29,11 @@ impl<'a> App<'a> {
     }
 
     pub fn poll(&mut self) {
+        if let Some(req) = self.usb.interrupt() {
+            self.process_request(req);
+        }
+    }
+
+    fn process_request(&mut self, req: Request) {
     }
 }

@@ -36,6 +36,16 @@ enum State {
     Initializing,
 }
 
+impl State {
+    pub fn initialized(&mut self) -> &mut InitializedUSB {
+        if let State::Initialized(initialized) = self {
+            return initialized;
+        } else {
+            panic!("USB is not initialized yet");
+        }
+    }
+}
+
 static mut EP_MEMORY: [u32; 1024] = [0; 1024];
 static mut USB_BUS: Option<UsbBusAllocator<UsbBusType>> = None;
 
@@ -77,9 +87,9 @@ impl USB {
                 USB_BUS = Some(usb_bus);
                 let usb_bus = USB_BUS.as_ref().unwrap();
 
-                let serial = SerialPort::new(&usb_bus);
                 let dap_v1 = CmsisDapV1::new(&usb_bus);
                 let dap_v2 = CmsisDapV2::new(&usb_bus);
+                let serial = SerialPort::new(&usb_bus);
 
                 let device = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x1209, 0xFF50))
                     .manufacturer("AGG")
@@ -112,17 +122,31 @@ impl USB {
     /// it processes; if any are unprocessed the USB interrupt keeps
     /// triggering until all are processed.
     pub fn interrupt(&mut self) -> Option<Request> {
-        todo!()
+        let usb = self.state.initialized();
+        if usb.device.poll(&mut [&mut usb.serial, &mut usb.dap_v1, &mut usb.dap_v2]) {
+            let r = usb.dap_v1.process();
+            if r.is_some() {
+                return r;
+            }
+
+            let r = usb.dap_v2.process();
+            if r.is_some() {
+                return r;
+            }
+        }
+        None
     }
 
     /// Transmit a DAP report back over the DAPv1 HID interface
     pub fn dap1_reply(&mut self, data: &[u8]) {
-        todo!()
+        let usb = self.state.initialized();
+        usb.dap_v1.write_packet(data).unwrap();
     }
 
     /// Transmit a DAP report back over the DAPv2 bulk interface
     pub fn dap2_reply(&mut self, data: &[u8]) {
-        todo!()
+        let usb = self.state.initialized();
+        usb.dap_v1.write_packet(data).unwrap();
     }
 
     /// Check if SWO endpoint is currently busy transmitting data
