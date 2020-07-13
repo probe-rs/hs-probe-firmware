@@ -8,3 +8,6 @@ members = [
 
 [patch.crates-io]
 stm32f7xx-hal = { path = "stm32f7xx-hal" }
+
+[profile.release]
+debug = true
