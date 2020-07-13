@@ -141,6 +141,10 @@ impl USB {
             if r.is_some() {
                 return r;
             }
+
+            // Discard data from the serial interface
+            let mut buf = [0; 64];
+            let _ = usb.serial.read(&mut buf);
         }
         None
     }
