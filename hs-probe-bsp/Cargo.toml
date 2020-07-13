@@ -7,4 +7,4 @@ edition = "2018"
 [dependencies]
 cortex-m = "0.6.2"
 stm32ral = { version = "0.4.1", features = ["stm32f7x3"] }
-synopsys-usb-otg = { version = "0.2.0", features = ["cortex-m", "fs"] }
+synopsys-usb-otg = { version = "0.2.1", features = ["cortex-m", "fs"] }
