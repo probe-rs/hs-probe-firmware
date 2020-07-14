@@ -178,4 +178,32 @@ impl Clocks {
             _ => self.sysclk,
         }
     }
+
+    pub fn pclk1(&self) -> u32 {
+        let hclk = self.hclk();
+
+        let rcc = unsafe { &*rcc::RCC };
+        let ppre = read_reg!(rcc, rcc, CFGR, PPRE1);
+        match ppre {
+            0b100 => hclk / 2,
+            0b101 => hclk / 4,
+            0b110 => hclk / 8,
+            0b111 => hclk / 16,
+            _ => hclk,
+        }
+    }
+
+    pub fn pclk2(&self) -> u32 {
+        let hclk = self.hclk();
+
+        let rcc = unsafe { &*rcc::RCC };
+        let ppre = read_reg!(rcc, rcc, CFGR, PPRE2);
+        match ppre {
+            0b100 => hclk / 2,
+            0b101 => hclk / 4,
+            0b110 => hclk / 8,
+            0b111 => hclk / 16,
+            _ => hclk,
+        }
+    }
 }
