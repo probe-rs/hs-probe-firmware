@@ -163,7 +163,7 @@ impl USB {
     /// Transmit a DAP report back over the DAPv2 bulk interface
     pub fn dap2_reply(&mut self, data: &[u8]) {
         let usb = self.state.as_initialized_mut();
-        usb.dap_v1.write_packet(data).expect("DAPv2 EP write failed");
+        usb.dap_v2.write_packet(data).expect("DAPv2 EP write failed");
     }
 
     /// Check if SWO endpoint is currently busy transmitting data
