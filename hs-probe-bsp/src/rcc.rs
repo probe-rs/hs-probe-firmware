@@ -102,7 +102,24 @@ impl RCC {
         modify_reg!(rcc, self.rcc, CFGR, PPRE1: Div1, PPRE2: Div1, HPRE: Div1);
 
         // Enable peripheral clocks
-        modify_reg!(rcc, self.rcc, AHB1ENR, GPIOAEN: Enabled, GPIOCEN: Enabled);
+        modify_reg!(rcc, self.rcc, AHB1ENR,
+            GPIOAEN: Enabled,
+            GPIOBEN: Enabled,
+            GPIOCEN: Enabled,
+            GPIODEN: Enabled,
+            GPIOEEN: Enabled,
+            GPIOGEN: Enabled,
+            DMA1EN: Enabled,
+            DMA2EN: Enabled
+        );
+        modify_reg!(rcc, self.rcc, APB1ENR,
+            SPI2EN: Enabled,
+            USART2EN: Enabled
+        );
+        modify_reg!(rcc, self.rcc, APB2ENR,
+            SPI1EN: Enabled,
+            USART1EN: Enabled
+        );
 
         Clocks {
             sysclk
