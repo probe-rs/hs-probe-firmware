@@ -3,7 +3,7 @@
 
 use crate::bsp::{
     gpio::Pins,
-    spi::{SPIClock, SPI},
+    spi::SPI,
 };
 use num_enum::IntoPrimitive;
 
@@ -88,8 +88,13 @@ impl<'a> SWD<'a> {
         }
     }
 
-    pub fn set_clock(&self, clock: SPIClock) {
-        self.spi.set_clock(clock);
+    pub fn set_clock(&self, max_frequency: u32) -> bool {
+        if let Some(prescaler) = self.spi.calculate_prescaler(max_frequency) {
+            self.spi.set_prescaler(prescaler);
+            true
+        } else {
+            false
+        }
     }
 
     pub fn spi_enable(&self) {

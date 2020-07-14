@@ -47,6 +47,7 @@ impl<'a> App<'a> {
         self.pins.setup();
         self.pins.high_impedance_mode();
 
+        self.spi.set_base_clock(&clocks);
         self.spi.disable();
 
         // Configure USB peripheral and connect to host

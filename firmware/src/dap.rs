@@ -4,7 +4,7 @@
 #![allow(clippy::identity_op)]
 
 use crate::{
-    bsp::{gpio::Pins, spi::SPIClock, uart::UART},
+    bsp::{gpio::Pins, uart::UART},
     swd,
 };
 use core::convert::{TryFrom, TryInto};
@@ -475,14 +475,11 @@ impl<'a> DAP<'a> {
     fn process_swj_clock(&mut self, mut req: Request) -> Option<ResponseWriter> {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         let clock = req.next_u32();
-        match SPIClock::from_max(clock) {
-            Some(clk) => {
-                self.swd.set_clock(clk);
-                resp.write_ok();
-            }
-            None => {
-                resp.write_err();
-            }
+        let valid = self.swd.set_clock(clock);
+        if valid {
+            resp.write_ok();
+        } else {
+            resp.write_err();
         }
         Some(resp)
     }

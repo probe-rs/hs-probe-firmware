@@ -1,50 +1,35 @@
 // Copyright 2019 Adam Greig
 // Dual licensed under the Apache 2.0 and MIT licenses.
 
+use core::sync::atomic::{AtomicU32, Ordering};
 use stm32ral::spi;
 use stm32ral::{modify_reg, read_reg, write_reg};
 
 use super::dma::DMA;
 use super::gpio::Pins;
+use crate::rcc::Clocks;
 
 pub struct SPI {
     spi: spi::Instance,
+    base_clock: AtomicU32,
 }
 
 #[repr(u32)]
 #[derive(Copy, Clone, Debug)]
-pub enum SPIClock {
-    Clk24M = 0,
-    Clk12M = 1,
-    Clk6M = 2,
-    Clk3M = 3,
-    Clk1M5 = 4,
-    Clk750k = 5,
-    Clk375k = 6,
-    Clk187k5 = 7,
-}
-
-impl SPIClock {
-    /// Returns the highest value for clock that is not higher than `max`,
-    /// or None if max is below the slowest clock option.
-    pub fn from_max(max: u32) -> Option<Self> {
-        match max {
-            f if f >= 24_000_000 => Some(SPIClock::Clk24M),
-            f if f >= 12_000_000 => Some(SPIClock::Clk12M),
-            f if f >= 6_000_000 => Some(SPIClock::Clk6M),
-            f if f >= 3_000_000 => Some(SPIClock::Clk3M),
-            f if f >= 1_500_000 => Some(SPIClock::Clk1M5),
-            f if f >= 750_000 => Some(SPIClock::Clk750k),
-            f if f >= 375_000 => Some(SPIClock::Clk375k),
-            f if f >= 187_500 => Some(SPIClock::Clk187k5),
-            _ => None,
-        }
-    }
+pub enum SPIPrescaler {
+    Div2 = 0b000,
+    Div4 = 0b001,
+    Div8 = 0b010,
+    Div16 = 0b011,
+    Div32 = 0b100,
+    Div64 = 0b101,
+    Div128 = 0b110,
+    Div256 = 0b111,
 }
 
 impl SPI {
     pub fn new(spi: spi::Instance) -> Self {
-        SPI { spi }
+        SPI { spi, base_clock: AtomicU32::new(0) }
     }
 
     /// Set up SPI peripheral for normal SPI mode, either flash or FPGA
@@ -77,6 +62,10 @@ impl SPI {
         );
     }
 
+    pub fn set_base_clock(&self, clocks: &Clocks) {
+        self.base_clock.store(clocks.pclk2(), Ordering::SeqCst);
+    }
+
     /// Set up SPI peripheral for SWD mode.
     ///
     /// Defaults to 1.5MHz clock which should be slow enough to work on most targets.
@@ -99,9 +88,42 @@ impl SPI {
         );
     }
 
+    pub fn calculate_prescaler(&self, max_frequency: u32) -> Option<SPIPrescaler> {
+        let base_clock = self.base_clock.load(Ordering::SeqCst);
+        if base_clock == 0 {
+            return None
+        }
+
+        if (base_clock / 2) <= max_frequency {
+            return Some(SPIPrescaler::Div2);
+        }
+        if (base_clock / 4) <= max_frequency {
+            return Some(SPIPrescaler::Div4);
+        }
+        if (base_clock / 8) <= max_frequency {
+            return Some(SPIPrescaler::Div8);
+        }
+        if (base_clock / 16) <= max_frequency {
+            return Some(SPIPrescaler::Div16);
+        }
+        if (base_clock / 32) <= max_frequency {
+            return Some(SPIPrescaler::Div32);
+        }
+        if (base_clock / 64) <= max_frequency {
+            return Some(SPIPrescaler::Div64);
+        }
+        if (base_clock / 128) <= max_frequency {
+            return Some(SPIPrescaler::Div128);
+        }
+        if (base_clock / 256) <= max_frequency {
+            return Some(SPIPrescaler::Div256);
+        }
+        None
+    }
+
     /// Change SPI clock rate to one of the SPIClock variants
-    pub fn set_clock(&self, clock: SPIClock) {
-        modify_reg!(spi, self.spi, CR1, BR: clock as u32);
+    pub fn set_prescaler(&self, prescaler: SPIPrescaler) {
+        modify_reg!(spi, self.spi, CR1, BR: prescaler as u32);
     }
 
     /// Wait for any pending operation then disable SPI
