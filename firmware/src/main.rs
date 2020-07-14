@@ -2,6 +2,7 @@
 #![no_main]
 
 mod app;
+mod swd;
 mod usb;
 
 use panic_rtt_target as _;
@@ -19,6 +20,8 @@ fn main() -> ! {
     let usb_device = stm32ral::otg_fs_device::OTG_FS_DEVICE::take().unwrap();
     let usb_pwrclk = stm32ral::otg_fs_pwrclk::OTG_FS_PWRCLK::take().unwrap();
     let mut usb = crate::usb::USB::new(usb_global, usb_device, usb_pwrclk);
+
+    let spi1 = bsp::spi::SPI::new(stm32ral::spi::SPI1::take().unwrap());
 
     let gpioa = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOA::take().unwrap());
     let gpiob = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOB::take().unwrap());
@@ -45,6 +48,8 @@ fn main() -> ! {
         usb_dm: gpioa.pin(11),
         usb_dp: gpioa.pin(12),
     };
+
+    let swd = swd::SWD::new(&spi1, &pins);
 
     // Create App instance with the HAL instances
     let mut app = app::App::new(&rcc, &pins, &mut usb);
