@@ -25,9 +25,12 @@ fn main() -> ! {
     let usb_pwrclk = stm32ral::otg_fs_pwrclk::OTG_FS_PWRCLK::take().unwrap();
     let mut usb = crate::usb::USB::new(usb_global, usb_device, usb_pwrclk);
 
-    let dma2 = bsp::dma::DMA::new(stm32ral::dma::DMA2::take().unwrap());
+    let dma = bsp::dma::DMA::new(
+        stm32ral::dma::DMA1::take().unwrap(),
+        stm32ral::dma::DMA2::take().unwrap()
+    );
     let spi1 = bsp::spi::SPI::new(stm32ral::spi::SPI1::take().unwrap());
-    let mut uart1 = bsp::uart::UART::new(stm32ral::usart::USART1::take().unwrap(), &dma2);
+    let mut uart1 = bsp::uart::UART::new(stm32ral::usart::USART1::take().unwrap(), &dma);
 
     let gpioa = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOA::take().unwrap());
     let gpiob = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOB::take().unwrap());

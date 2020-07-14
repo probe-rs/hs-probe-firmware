@@ -4,24 +4,36 @@
 use stm32ral::dma;
 use stm32ral::{modify_reg, read_reg, write_reg};
 
+/*
+SPI1_RX: DMA2, stream 2, channel 3
+SPI1_TX: DMA2, stream 3, channel 3
+SPI2_RX: DMA1, stream 3, channel 0
+SPI2_TX: DMA1, stream 4, channel 0
+USART1_RX: DMA2, stream 5, channel 4
+USART2_RX: DMA1, stream 5, channel 4
+USART2_TX: DMA1, stream 6, channel 4
+*/
+
 const SPI_DR_OFFSET: u32 = 0x0C;
 const UART_DR_OFFSET: u32 = 0x24;
 
 pub struct DMA {
-    dma: dma::Instance,
+    dma1: dma::Instance,
+    dma2: dma::Instance,
 }
 
 impl DMA {
-    pub fn new(dma: dma::Instance) -> Self {
-        DMA { dma }
+    pub fn new(dma1: dma::Instance, dma2: dma::Instance) -> Self {
+        DMA { dma1, dma2 }
     }
 
     pub fn setup(&self) {
-        // Set up channel 2 for SPI1_RX
+        // Set up DMA2 stream 2, channel 3 for SPI1_RX
         write_reg!(
             dma,
-            self.dma,
+            self.dma2,
             CR2,
+            CHSEL: 3,
             PL: High,
             MSIZE: Bits8,
             PSIZE: Bits8,
@@ -33,16 +45,17 @@ impl DMA {
         );
         write_reg!(
             dma,
-            self.dma,
+            self.dma2,
             PAR2,
             stm32ral::spi::SPI1 as u32 + SPI_DR_OFFSET
         );
 
-        // Set up channel 3 for SPI1_TX
+        // Set up DMA2 stream 3, channel 3 for SPI1_TX
         write_reg!(
             dma,
-            self.dma,
+            self.dma2,
             CR3,
+            CHSEL: 3,
             PL: High,
             MSIZE: Bits8,
             PSIZE: Bits8,
@@ -54,16 +67,61 @@ impl DMA {
         );
         write_reg!(
             dma,
-            self.dma,
+            self.dma2,
             PAR3,
             stm32ral::spi::SPI1 as u32 + SPI_DR_OFFSET
         );
 
-        // Set up channel 5 for UART2_RX
+        // Set up DMA1 stream 3, channel 0 for SPI2_RX
         write_reg!(
             dma,
-            self.dma,
+            self.dma1,
+            CR3,
+            CHSEL: 0,
+            PL: High,
+            MSIZE: Bits8,
+            PSIZE: Bits8,
+            MINC: Incremented,
+            PINC: Fixed,
+            CIRC: Disabled,
+            DIR: PeripheralToMemory,
+            EN: Disabled
+        );
+        write_reg!(
+            dma,
+            self.dma1,
+            PAR3,
+            stm32ral::spi::SPI2 as u32 + SPI_DR_OFFSET
+        );
+
+        // Set up DMA1 stream 4, channel 0 for SPI2_TX
+        write_reg!(
+            dma,
+            self.dma1,
+            CR4,
+            CHSEL: 0,
+            PL: High,
+            MSIZE: Bits8,
+            PSIZE: Bits8,
+            MINC: Incremented,
+            PINC: Fixed,
+            CIRC: Disabled,
+            DIR: MemoryToPeripheral,
+            EN: Disabled
+        );
+        write_reg!(
+            dma,
+            self.dma1,
+            PAR4,
+            stm32ral::spi::SPI2 as u32 + SPI_DR_OFFSET
+        );
+
+        // Set up DMA2 stream 5, channel 4 for USART1_RX
+        write_reg!(
+            dma,
+            self.dma2,
             CR5,
+            CHSEL: 4,
             PL: High,
             MSIZE: Bits8,
             PSIZE: Bits8,
@@ -75,17 +133,61 @@ impl DMA {
         );
         write_reg!(
             dma,
-            self.dma,
+            self.dma2,
             PAR5,
+            stm32ral::usart::USART1 as u32 + UART_DR_OFFSET
+        );
+
+        // Set up DMA1 stream 5, channel 4 for USART2_RX
+        write_reg!(
+            dma,
+            self.dma1,
+            CR5,
+            CHSEL: 4,
+            PL: High,
+            MSIZE: Bits8,
+            PSIZE: Bits8,
+            MINC: Incremented,
+            PINC: Fixed,
+            CIRC: Enabled,
+            DIR: PeripheralToMemory,
+            EN: Disabled
+        );
+        write_reg!(
+            dma,
+            self.dma1,
+            PAR5,
+            stm32ral::usart::USART2 as u32 + UART_DR_OFFSET
+        );
+
+        // Set up DMA1 stream 6, channel 4 for USART2_TX
+        write_reg!(
+            dma,
+            self.dma1,
+            CR6,
+            CHSEL: 4,
+            PL: High,
+            MSIZE: Bits8,
+            PSIZE: Bits8,
+            MINC: Incremented,
+            PINC: Fixed,
+            CIRC: Disabled,
+            DIR: MemoryToPeripheral,
+            EN: Disabled
+        );
+        write_reg!(
+            dma,
+            self.dma1,
+            PAR6,
             stm32ral::usart::USART2 as u32 + UART_DR_OFFSET
         );
     }
 
-    /// Sets up and enables a DMA transmit/receive for SPI1 (channels 2 and 3)
+    /// Sets up and enables a DMA transmit/receive for SPI1 (streams 2 and 3, channel 3)
     pub fn spi1_enable(&self, tx: &[u8], rx: &mut [u8]) {
         write_reg!(
             dma,
-            self.dma,
+            self.dma2,
             LIFCR,
             CTCIF2: Clear,
             CHTIF2: Clear,
@@ -98,30 +200,30 @@ impl DMA {
             CDMEIF3: Clear,
             CFEIF3: Clear
         );
-        write_reg!(dma, self.dma, NDTR2, rx.len() as u32);
-        write_reg!(dma, self.dma, NDTR3, tx.len() as u32);
-        write_reg!(dma, self.dma, M0AR2, rx.as_mut_ptr() as u32);
-        write_reg!(dma, self.dma, M0AR3, tx.as_ptr() as u32);
-        modify_reg!(dma, self.dma, CR2, EN: Enabled);
-        modify_reg!(dma, self.dma, CR3, EN: Enabled);
+        write_reg!(dma, self.dma2, NDTR2, rx.len() as u32);
+        write_reg!(dma, self.dma2, NDTR3, tx.len() as u32);
+        write_reg!(dma, self.dma2, M0AR2, rx.as_mut_ptr() as u32);
+        write_reg!(dma, self.dma2, M0AR3, tx.as_ptr() as u32);
+        modify_reg!(dma, self.dma2, CR2, EN: Enabled);
+        modify_reg!(dma, self.dma2, CR3, EN: Enabled);
     }
 
     /// Check if SPI1 transaction is still ongoing
     pub fn spi1_busy(&self) -> bool {
-        read_reg!(dma, self.dma, LISR, TCIF2 == NotComplete)
+        read_reg!(dma, self.dma2, LISR, TCIF2 == NotComplete)
     }
 
     /// Stop SPI1 DMA
     pub fn spi1_disable(&self) {
-        modify_reg!(dma, self.dma, CR2, EN: Disabled);
-        modify_reg!(dma, self.dma, CR3, EN: Disabled);
+        modify_reg!(dma, self.dma2, CR2, EN: Disabled);
+        modify_reg!(dma, self.dma2, CR3, EN: Disabled);
     }
 
-    /// Start USART2 reception into provided buffer
-    pub fn usart2_start(&self, rx: &mut [u8]) {
+    /// Start USART1 reception into provided buffer
+    pub fn usart1_start(&self, rx: &mut [u8]) {
         write_reg!(
             dma,
-            self.dma,
+            self.dma2,
             HIFCR,
             CTCIF5: Clear,
             CHTIF5: Clear,
@@ -129,18 +231,18 @@ impl DMA {
             CDMEIF5: Clear,
             CFEIF5: Clear
         );
-        write_reg!(dma, self.dma, NDTR5, rx.len() as u32);
-        write_reg!(dma, self.dma, M0AR5, rx.as_mut_ptr() as u32);
-        modify_reg!(dma, self.dma, CR5, EN: Enabled);
+        write_reg!(dma, self.dma1, NDTR5, rx.len() as u32);
+        write_reg!(dma, self.dma1, M0AR5, rx.as_mut_ptr() as u32);
+        modify_reg!(dma, self.dma1, CR5, EN: Enabled);
     }
 
-    /// Return how many bytes are left to transfer for USART2
-    pub fn usart2_ndtr(&self) -> usize {
-        read_reg!(dma, self.dma, NDTR5) as usize
+    /// Return how many bytes are left to transfer for USART1
+    pub fn usart1_ndtr(&self) -> usize {
+        read_reg!(dma, self.dma2, NDTR5) as usize
     }
 
-    /// Stop USART2 DMA
-    pub fn usart2_stop(&self) {
-        modify_reg!(dma, self.dma, CR5, EN: Disabled);
+    /// Stop USART1 DMA
+    pub fn usart1_stop(&self) {
+        modify_reg!(dma, self.dma2, CR5, EN: Disabled);
     }
 }
