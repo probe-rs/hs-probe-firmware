@@ -1,4 +1,6 @@
 [default.probe]
+usb_vid = "1209"
+usb_pid = "da42"
 protocol = "Swd"
 
 [default.flashing]
