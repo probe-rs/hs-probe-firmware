@@ -4,10 +4,12 @@ members = [
     "hs-probe-bsp",
     "hs-probe-examples",
     "stm32f7xx-hal",
+    "usb-device",
 ]
 
 [patch.crates-io]
 stm32f7xx-hal = { path = "stm32f7xx-hal" }
+usb-device = { path = "usb-device" }
 
 [profile.release]
 debug = true
