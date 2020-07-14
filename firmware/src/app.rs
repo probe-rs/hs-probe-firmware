@@ -42,8 +42,30 @@ impl<'a> App<'a> {
         if let Some(req) = self.usb.interrupt() {
             self.process_request(req);
         }
+
+        if self.dap.is_swo_streaming() && !self.usb.dap2_swo_is_busy() {
+            // Poll for new UART data when streaming is enabled and
+            // the SWO endpoint is ready to transmit more data.
+            if let Some(data) = self.dap.poll_swo() {
+                self.usb.dap2_stream_swo(data);
+            }
+        }
     }
 
     fn process_request(&mut self, req: Request) {
+        match req {
+            Request::DAP1Command((report, n)) => {
+                let response = self.dap.process_command(&report[..n]);
+                if let Some(data) = response {
+                    self.usb.dap1_reply(data);
+                }
+            }
+            Request::DAP2Command((report, n)) => {
+                let response = self.dap.process_command(&report[..n]);
+                if let Some(data) = response {
+                    self.usb.dap2_reply(data);
+                }
+            }
+        }
     }
 }
