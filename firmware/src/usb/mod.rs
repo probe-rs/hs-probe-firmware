@@ -10,9 +10,11 @@ use usb_device::prelude::*;
 use usb_device::bus::UsbBusAllocator;
 use usbd_serial::SerialPort;
 
+mod winusb;
 mod dap_v1;
 mod dap_v2;
 
+use winusb::MicrosoftDescriptors;
 use dap_v1::CmsisDapV1;
 use dap_v2::CmsisDapV2;
 
@@ -25,6 +27,7 @@ struct UninitializedUSB {
 
 struct InitializedUSB {
     device: UsbDevice<'static, UsbBusType>,
+    winusb: MicrosoftDescriptors,
     dap_v1: CmsisDapV1<'static, UsbBusType>,
     dap_v2: CmsisDapV2<'static, UsbBusType>,
     serial: SerialPort<'static, UsbBusType>,
@@ -95,6 +98,7 @@ impl USB {
                 USB_BUS = Some(usb_bus);
                 let usb_bus = USB_BUS.as_ref().unwrap();
 
+                let winusb = MicrosoftDescriptors;
                 let dap_v1 = CmsisDapV1::new(&usb_bus);
                 let dap_v2 = CmsisDapV2::new(&usb_bus);
                 let serial = SerialPort::new(&usb_bus);
@@ -108,6 +112,7 @@ impl USB {
 
                 let usb = InitializedUSB {
                     device,
+                    winusb,
                     dap_v1,
                     dap_v2,
                     serial,
@@ -131,7 +136,7 @@ impl USB {
     /// triggering until all are processed.
     pub fn interrupt(&mut self) -> Option<Request> {
         let usb = self.state.as_initialized_mut();
-        if usb.device.poll(&mut [&mut usb.dap_v1, &mut usb.dap_v2, &mut usb.serial]) {
+        if usb.device.poll(&mut [&mut usb.winusb, &mut usb.dap_v1, &mut usb.dap_v2, &mut usb.serial]) {
             let r = usb.dap_v1.process();
             if r.is_some() {
                 return r;
