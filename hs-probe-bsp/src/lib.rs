@@ -5,3 +5,4 @@ pub mod gpio;
 pub mod otg_fs;
 pub mod rcc;
 pub mod spi;
+pub mod uart;
