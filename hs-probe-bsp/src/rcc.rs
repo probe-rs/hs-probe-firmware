@@ -45,6 +45,30 @@ impl RCC {
         // Wait for HSE to be ready
         while read_reg!(rcc, self.rcc, CR, HSERDY == NotReady) {}
 
+        // Calculate prescalers
+        let ppre1;
+        let ppre2;
+        match frequency {
+            CoreFrequency::F48MHz => {
+                ppre1 = 0b000; // AHB clock not divided
+                ppre2 = 0b000; // AHB clock not divided
+            }
+            CoreFrequency::F72MHz => {
+                ppre1 = 0b100; // AHB clock divided by 2
+                ppre2 = 0b000; // AHB clock not divided
+            }
+            CoreFrequency::F216MHz => {
+                ppre1 = 0b101; // AHB clock divided by 4
+                ppre2 = 0b100; // AHB clock divided by 2
+            }
+        }
+        // Set prescalers
+        modify_reg!(rcc, self.rcc, CFGR,
+            HPRE: Div1,
+            PPRE1: ppre1,
+            PPRE2: ppre2
+        );
+
         // Calculate PLL parameters and flash latency
         let pllm = 6;
         let plln;
