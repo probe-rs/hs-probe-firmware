@@ -11,6 +11,7 @@ pub struct App<'a> {
     rcc: &'a bsp::rcc::RCC,
     dma: &'a bsp::dma::DMA,
     pins: &'a bsp::gpio::Pins<'a>,
+    spi: &'a bsp::spi::SPI,
     usb: &'a mut crate::usb::USB,
     dap: &'a mut crate::dap::DAP<'a>,
 }
@@ -19,6 +20,7 @@ impl<'a> App<'a> {
     pub fn new(rcc: &'a bsp::rcc::RCC,
                dma: &'a bsp::dma::DMA,
                pins: &'a bsp::gpio::Pins<'a>,
+               spi: &'a bsp::spi::SPI,
                usb: &'a mut crate::usb::USB,
                dap: &'a mut crate::dap::DAP<'a>,
     ) -> Self {
@@ -26,6 +28,7 @@ impl<'a> App<'a> {
             rcc,
             dma,
             pins,
+            spi,
             usb,
             dap,
         }
@@ -43,6 +46,8 @@ impl<'a> App<'a> {
         // Configure GPIOs
         self.pins.setup();
         self.pins.high_impedance_mode();
+
+        self.spi.disable();
 
         // Configure USB peripheral and connect to host
         self.usb.setup(&clocks);
@@ -80,6 +85,7 @@ impl<'a> App<'a> {
                 self.pins.high_impedance_mode();
                 self.pins.led.set_high();
                 self.pins.tvcc_en.set_low();
+                self.spi.disable();
             },
         }
     }
