@@ -10,17 +10,20 @@ pub struct App<'a> {
     rcc: &'a bsp::rcc::RCC,
     pins: &'a bsp::gpio::Pins<'a>,
     usb: &'a mut crate::usb::USB,
+    dap: &'a mut crate::dap::DAP<'a>,
 }
 
 impl<'a> App<'a> {
     pub fn new(rcc: &'a bsp::rcc::RCC,
                pins: &'a bsp::gpio::Pins<'a>,
-               usb: &'a mut crate::usb::USB
+               usb: &'a mut crate::usb::USB,
+               dap: &'a mut crate::dap::DAP<'a>,
     ) -> Self {
         App {
             rcc,
             pins,
             usb,
+            dap,
         }
     }
 

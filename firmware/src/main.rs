@@ -1,14 +1,18 @@
 #![no_std]
 #![no_main]
 
-mod app;
-mod swd;
-mod usb;
-
 use panic_rtt_target as _;
 use cortex_m_rt::entry;
 use rtt_target::{rtt_init_print, rprintln};
 pub use hs_probe_bsp as bsp;
+use git_version::git_version;
+
+const GIT_VERSION: &str = git_version!();
+
+mod app;
+mod dap;
+mod swd;
+mod usb;
 
 #[entry]
 fn main() -> ! {
@@ -21,7 +25,9 @@ fn main() -> ! {
     let usb_pwrclk = stm32ral::otg_fs_pwrclk::OTG_FS_PWRCLK::take().unwrap();
     let mut usb = crate::usb::USB::new(usb_global, usb_device, usb_pwrclk);
 
+    let dma2 = bsp::dma::DMA::new(stm32ral::dma::DMA2::take().unwrap());
     let spi1 = bsp::spi::SPI::new(stm32ral::spi::SPI1::take().unwrap());
+    let mut uart1 = bsp::uart::UART::new(stm32ral::usart::USART1::take().unwrap(), &dma2);
 
     let gpioa = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOA::take().unwrap());
     let gpiob = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOB::take().unwrap());
@@ -50,9 +56,10 @@ fn main() -> ! {
     };
 
     let swd = swd::SWD::new(&spi1, &pins);
+    let mut dap = dap::DAP::new(swd, &mut uart1, &pins);
 
     // Create App instance with the HAL instances
-    let mut app = app::App::new(&rcc, &pins, &mut usb);
+    let mut app = app::App::new(&rcc, &pins, &mut usb, &mut dap);
 
     rprintln!("Starting...");
 
