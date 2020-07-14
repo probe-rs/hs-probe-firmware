@@ -177,18 +177,4 @@ impl USB {
         let usb = self.state.as_initialized_mut();
         usb.dap_v2.trace_write(data).expect("trace EP write failed");
     }
-
-    /// Indicate we can currently receive DAP requests
-    pub fn dap_enable(&mut self) {
-        let usb = self.state.as_initialized_mut();
-        usb.dap_v1.rx_valid();
-        usb.dap_v2.rx_valid();
-    }
-
-    /// Indicate we cannot currently receive DAP requests
-    pub fn dap_disable(&mut self) {
-        let usb = self.state.as_initialized_mut();
-        usb.dap_v1.rx_stall();
-        usb.dap_v2.rx_stall();
-    }
 }

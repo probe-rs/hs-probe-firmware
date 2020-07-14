@@ -62,14 +62,6 @@ impl<B: UsbBus> CmsisDapV1<'_, B> {
         }
         self.write_ep.write(&data).map(|_| ())
     }
-
-    pub fn rx_stall(&mut self) {
-        self.read_ep.stall();
-    }
-
-    pub fn rx_valid(&mut self) {
-        self.read_ep.unstall();
-    }
 }
 
 impl<B: UsbBus> UsbClass<B> for CmsisDapV1<'_, B> {
