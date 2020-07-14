@@ -2,6 +2,7 @@ use hs_probe_bsp as bsp;
 use hs_probe_bsp::rcc::CoreFrequency;
 
 pub enum Request {
+    Suspend,
     DAP1Command(([u8; 64], usize)),
     DAP2Command(([u8; 64], usize)),
 }
@@ -32,8 +33,11 @@ impl<'a> App<'a> {
     pub unsafe fn setup(&mut self) {
         // Configure system clock
         let clocks = self.rcc.setup(CoreFrequency::F72MHz);
+
         // Configure GPIOs
         self.pins.setup();
+        self.pins.high_impedance_mode();
+
         // Configure USB peripheral and connect to host
         self.usb.setup(&clocks);
     }
@@ -66,6 +70,11 @@ impl<'a> App<'a> {
                     self.usb.dap2_reply(data);
                 }
             }
+            Request::Suspend => {
+                self.pins.high_impedance_mode();
+                self.pins.led.set_high();
+                self.pins.tvcc_en.set_low();
+            },
         }
     }
 }

@@ -27,6 +27,7 @@ struct UninitializedUSB {
 
 struct InitializedUSB {
     device: UsbDevice<'static, UsbBusType>,
+    device_state: UsbDeviceState,
     winusb: MicrosoftDescriptors,
     dap_v1: CmsisDapV1<'static, UsbBusType>,
     dap_v2: CmsisDapV2<'static, UsbBusType>,
@@ -109,9 +110,11 @@ impl USB {
                     .serial_number("TEST")
                     .device_class(0)
                     .build();
+                let device_state = device.state();
 
                 let usb = InitializedUSB {
                     device,
+                    device_state,
                     winusb,
                     dap_v1,
                     dap_v2,
@@ -137,6 +140,13 @@ impl USB {
     pub fn interrupt(&mut self) -> Option<Request> {
         let usb = self.state.as_initialized_mut();
         if usb.device.poll(&mut [&mut usb.winusb, &mut usb.dap_v1, &mut usb.dap_v2, &mut usb.serial]) {
+            let old_state = usb.device_state;
+            let new_state = usb.device.state();
+            usb.device_state = new_state;
+            if (old_state != new_state) && (new_state != UsbDeviceState::Configured) {
+                return Some(Request::Suspend);
+            }
+
             let r = usb.dap_v1.process();
             if r.is_some() {
                 return r;
