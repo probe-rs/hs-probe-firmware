@@ -7,28 +7,32 @@ mod usb;
 use panic_rtt_target as _;
 use cortex_m_rt::entry;
 use rtt_target::{rtt_init_print, rprintln};
+pub use hs_probe_bsp as bsp;
 
 #[entry]
 fn main() -> ! {
     rtt_init_print!();
 
-    let rcc = hs_probe_bsp::rcc::RCC::new(stm32ral::rcc::RCC::take().unwrap());
+    let rcc = bsp::rcc::RCC::new(stm32ral::rcc::RCC::take().unwrap());
 
     let usb_global = stm32ral::otg_fs_global::OTG_FS_GLOBAL::take().unwrap();
     let usb_device = stm32ral::otg_fs_device::OTG_FS_DEVICE::take().unwrap();
     let usb_pwrclk = stm32ral::otg_fs_pwrclk::OTG_FS_PWRCLK::take().unwrap();
     let mut usb = crate::usb::USB::new(usb_global, usb_device, usb_pwrclk);
 
-    let gpioa = hs_probe_bsp::gpio::GPIO::new(stm32ral::gpio::GPIOA::take().unwrap());
-    let gpiob = hs_probe_bsp::gpio::GPIO::new(stm32ral::gpio::GPIOB::take().unwrap());
-    let gpioc = hs_probe_bsp::gpio::GPIO::new(stm32ral::gpio::GPIOC::take().unwrap());
-    let gpiod = hs_probe_bsp::gpio::GPIO::new(stm32ral::gpio::GPIOD::take().unwrap());
-    let gpioe = hs_probe_bsp::gpio::GPIO::new(stm32ral::gpio::GPIOE::take().unwrap());
-    let gpioi = hs_probe_bsp::gpio::GPIO::new(stm32ral::gpio::GPIOI::take().unwrap());
+    let gpioa = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOA::take().unwrap());
+    let gpiob = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOB::take().unwrap());
+    let gpioc = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOC::take().unwrap());
+    let gpiod = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOD::take().unwrap());
+    let gpioe = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOE::take().unwrap());
+    let gpiog = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOG::take().unwrap());
+    let gpioi = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOI::take().unwrap());
 
-    let pins = hs_probe_bsp::gpio::Pins {
+    let pins = bsp::gpio::Pins {
         led: gpioc.pin(10),
         tvcc_en: gpioe.pin(2),
+        reset: gpiog.pin(13),
+        gnd_detect: gpiog.pin(14),
         usart1_rx: gpiob.pin(7),
         usart2_rx: gpiod.pin(6),
         usart2_tx: gpiod.pin(5),

@@ -337,6 +337,8 @@ pub struct Pins<'a> {
     pub led: Pin<'a>,
 
     pub tvcc_en: Pin<'a>,
+    pub reset: Pin<'a>,
+    pub gnd_detect: Pin<'a>,
 
     // Used for SWO in SWD mode
     pub usart1_rx: Pin<'a>,
@@ -376,6 +378,18 @@ impl<'a> Pins<'a> {
             .set_otype_pushpull()
             .set_ospeed_low()
             .set_mode_output();
+
+        // Open-drain output to RESET reset line (active low). Starts high-impedance.
+        self.reset
+            .set_high()
+            .set_otype_opendrain()
+            .set_ospeed_high()
+            .set_mode_input();
+
+        // Input for GNDDetect
+        self.gnd_detect
+            .set_pull_up()
+            .set_mode_input();
 
         // Used for SWO in SWD mode. Starts high-impedance.
         self.usart1_rx
@@ -446,6 +460,7 @@ impl<'a> Pins<'a> {
 
     /// Place SPI pins into high-impedance mode
     pub fn high_impedance_mode(&self) {
+        self.reset.set_mode_input();
         self.usart1_rx.set_mode_input();
         self.spi1_clk.set_mode_input();
         self.spi1_miso.set_mode_input();
@@ -457,6 +472,7 @@ impl<'a> Pins<'a> {
 
     /// Place SPI pins into JTAG mode
     pub fn jtag_mode(&self) {
+        self.reset.set_mode_output();
         self.usart1_rx.set_mode_input();
         self.spi1_clk.set_mode_input();
         self.spi1_miso.set_mode_input();
@@ -468,6 +484,7 @@ impl<'a> Pins<'a> {
 
     /// Place SPI pins into SWD mode
     pub fn swd_mode(&self) {
+        self.reset.set_mode_output();
         self.usart1_rx.set_mode_alternate();
         self.spi2_clk.set_mode_input();
         self.spi2_miso.set_mode_input();
