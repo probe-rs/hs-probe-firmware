@@ -9,6 +9,7 @@ pub enum Request {
 
 pub struct App<'a> {
     rcc: &'a bsp::rcc::RCC,
+    dma: &'a bsp::dma::DMA,
     pins: &'a bsp::gpio::Pins<'a>,
     usb: &'a mut crate::usb::USB,
     dap: &'a mut crate::dap::DAP<'a>,
@@ -16,12 +17,14 @@ pub struct App<'a> {
 
 impl<'a> App<'a> {
     pub fn new(rcc: &'a bsp::rcc::RCC,
+               dma: &'a bsp::dma::DMA,
                pins: &'a bsp::gpio::Pins<'a>,
                usb: &'a mut crate::usb::USB,
                dap: &'a mut crate::dap::DAP<'a>,
     ) -> Self {
         App {
             rcc,
+            dma,
             pins,
             usb,
             dap,
@@ -33,6 +36,9 @@ impl<'a> App<'a> {
     pub unsafe fn setup(&mut self) {
         // Configure system clock
         let clocks = self.rcc.setup(CoreFrequency::F72MHz);
+
+        // Configure DMA for SPI1, SPI2, USART1 and USART2 transfers
+        self.dma.setup();
 
         // Configure GPIOs
         self.pins.setup();

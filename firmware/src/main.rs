@@ -62,7 +62,7 @@ fn main() -> ! {
     let mut dap = dap::DAP::new(swd, &mut uart1, &pins);
 
     // Create App instance with the HAL instances
-    let mut app = app::App::new(&rcc, &pins, &mut usb, &mut dap);
+    let mut app = app::App::new(&rcc, &dma, &pins, &mut usb, &mut dap);
 
     rprintln!("Starting...");
 
