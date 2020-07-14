@@ -38,7 +38,10 @@ impl<'a> App<'a> {
     /// No other contexts should be active at the same time.
     pub unsafe fn setup(&mut self) {
         // Configure system clock
+        #[cfg(not(feature = "turbo"))]
         let clocks = self.rcc.setup(CoreFrequency::F72MHz);
+        #[cfg(feature = "turbo")]
+        let clocks = self.rcc.setup(CoreFrequency::F216MHz);
 
         // Configure DMA for SPI1, SPI2, USART1 and USART2 transfers
         self.dma.setup();
