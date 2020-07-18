@@ -1,0 +1,40 @@
+name: Continuous integration
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  ci-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # All generated code should be running on stable now
+        rust: [stable]
+
+        include:
+          # Test nightly but don't fail
+          - rust: nightly
+            experimental: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ matrix.rust }}
+          target: thumbv7em-none-eabihf
+          override: true
+
+      - name: Build firmware
+        working-directory: firmware
+        run: cargo build --release
+
+      - name: Build examples
+        working-directory: hs-probe-examples
+        run: cargo build --release --examples
