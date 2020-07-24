@@ -379,12 +379,12 @@ impl<'a> Pins<'a> {
             .set_ospeed_low()
             .set_mode_output();
 
-        // Open-drain output to RESET reset line (active low). Starts high-impedance.
+        // Open-drain output to RESET reset line (active low).
         self.reset
             .set_high()
             .set_otype_opendrain()
             .set_ospeed_high()
-            .set_mode_input();
+            .set_mode_output();
 
         // Input for GNDDetect
         self.gnd_detect
@@ -460,7 +460,7 @@ impl<'a> Pins<'a> {
 
     /// Place SPI pins into high-impedance mode
     pub fn high_impedance_mode(&self) {
-        self.reset.set_mode_input();
+        self.reset.set_high().set_mode_output();
         self.usart1_rx.set_mode_input();
         self.spi1_clk.set_mode_input();
         self.spi1_miso.set_mode_input();
