@@ -6,6 +6,7 @@ use git_version::git_version;
 pub use hs_probe_bsp as bsp;
 use panic_rtt_target as _;
 use rtt_target::{rprintln, rtt_init_print};
+use stm32_device_signature::device_id_hex;
 
 const GIT_VERSION: &str = git_version!();
 
@@ -13,25 +14,6 @@ mod app;
 mod dap;
 mod swd;
 mod usb;
-
-fn uid_to_serial() -> [u8; 24] {
-    let hex_arr = b"0123456789abdcef";
-    let mut s = [0; 24];
-
-    // 96-bit UID register
-    let uid = unsafe { core::slice::from_raw_parts(0x1ff0_7a10 as *const u8, 12) };
-
-    for (i, b) in uid.iter().enumerate() {
-        let idx1 = b & 0xf;
-        let idx2 = (b >> 4) & 0xf;
-        s[2 * i + 1] = hex_arr[idx1 as usize];
-        s[2 * i] = hex_arr[idx2 as usize];
-    }
-
-    s
-}
-
-static mut SERIAL_STRING: [u8; 24] = [0; 24];
 
 #[entry]
 fn main() -> ! {
@@ -89,8 +71,7 @@ fn main() -> ! {
 
     // Initialise application, including system peripherals
     unsafe {
-        SERIAL_STRING = uid_to_serial();
-        app.setup(core::str::from_utf8_unchecked(&SERIAL_STRING))
+        app.setup(device_id_hex())
     };
 
     loop {
