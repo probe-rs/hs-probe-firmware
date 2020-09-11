@@ -109,6 +109,7 @@ impl USB {
                     .product("HS-Probe with CMSIS-DAP Support")
                     .serial_number(serial_string)
                     .device_class(0)
+                    .max_power(500)
                     .build();
                 let device_state = device.state();
 
