@@ -84,7 +84,7 @@ impl USB {
     }
 
     /// Initialise the USB peripheral ready to start processing packets
-    pub fn setup(&mut self, clocks: &Clocks) {
+    pub fn setup(&mut self, clocks: &Clocks, serial_string: &'static str) {
         let state = core::mem::replace(&mut self.state, State::Initializing);
         if let State::Uninitialized(usb) = state {
             cortex_m::interrupt::free(|_| unsafe {
@@ -104,10 +104,10 @@ impl USB {
                 let dap_v2 = CmsisDapV2::new(&usb_bus);
                 let serial = SerialPort::new(&usb_bus);
 
-                let device = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x1209, 0xFF50))
-                    .manufacturer("AGG")
-                    .product("FFP r1 with CMSIS-DAP Support")
-                    .serial_number("TEST")
+                let device = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x1209, 0x4853))
+                    .manufacturer("Probe-rs development team")
+                    .product("HS-Probe with CMSIS-DAP Support")
+                    .serial_number(serial_string)
                     .device_class(0)
                     .build();
                 let device_state = device.state();

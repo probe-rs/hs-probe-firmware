@@ -349,10 +349,12 @@ impl<'a> DAP<'a> {
         if let Ok(HostStatusType::Connect) = HostStatusType::try_from(status_type) {
             match status_status {
                 0 => {
-                    self.pins.led.set_low();
+                    self.pins.led_red.set_low();
+                    self.pins.led_green.set_high();
                 }
                 1 => {
-                    self.pins.led.set_high();
+                    self.pins.led_red.set_high();
+                    self.pins.led_green.set_low();
                 }
                 _ => (),
             }

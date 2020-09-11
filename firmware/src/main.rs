@@ -1,11 +1,11 @@
 #![no_std]
 #![no_main]
 
-use panic_rtt_target as _;
 use cortex_m_rt::entry;
-use rtt_target::{rtt_init_print, rprintln};
-pub use hs_probe_bsp as bsp;
 use git_version::git_version;
+pub use hs_probe_bsp as bsp;
+use panic_rtt_target as _;
+use rtt_target::{rprintln, rtt_init_print};
 
 const GIT_VERSION: &str = git_version!();
 
@@ -13,6 +13,25 @@ mod app;
 mod dap;
 mod swd;
 mod usb;
+
+fn uid_to_serial() -> [u8; 24] {
+    let hex_arr = b"0123456789abdcef";
+    let mut s = [0; 24];
+
+    // 96-bit UID register
+    let uid = unsafe { core::slice::from_raw_parts(0x1ff0_7a10 as *const u8, 12) };
+
+    for (i, b) in uid.iter().enumerate() {
+        let idx1 = b & 0xf;
+        let idx2 = (b >> 4) & 0xf;
+        s[2 * i + 1] = hex_arr[idx1 as usize];
+        s[2 * i] = hex_arr[idx2 as usize];
+    }
+
+    s
+}
+
+static mut SERIAL_STRING: [u8; 24] = [0; 24];
 
 #[entry]
 fn main() -> ! {
@@ -27,7 +46,7 @@ fn main() -> ! {
 
     let dma = bsp::dma::DMA::new(
         stm32ral::dma::DMA1::take().unwrap(),
-        stm32ral::dma::DMA2::take().unwrap()
+        stm32ral::dma::DMA2::take().unwrap(),
     );
     let spi1 = bsp::spi::SPI::new(stm32ral::spi::SPI1::take().unwrap());
     let mut uart1 = bsp::uart::UART::new(stm32ral::usart::USART1::take().unwrap(), &dma);
@@ -41,7 +60,9 @@ fn main() -> ! {
     let gpioi = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOI::take().unwrap());
 
     let pins = bsp::gpio::Pins {
-        led: gpioc.pin(10),
+        led_red: gpioc.pin(10),
+        led_green: gpiob.pin(8),
+        led_blue: gpioe.pin(0),
         tvcc_en: gpioe.pin(2),
         reset: gpiog.pin(13),
         gnd_detect: gpiog.pin(14),
@@ -67,7 +88,10 @@ fn main() -> ! {
     rprintln!("Starting...");
 
     // Initialise application, including system peripherals
-    unsafe { app.setup() };
+    unsafe {
+        SERIAL_STRING = uid_to_serial();
+        app.setup(core::str::from_utf8_unchecked(&SERIAL_STRING))
+    };
 
     loop {
         // Process events

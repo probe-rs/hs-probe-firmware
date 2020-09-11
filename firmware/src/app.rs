@@ -17,12 +17,13 @@ pub struct App<'a> {
 }
 
 impl<'a> App<'a> {
-    pub fn new(rcc: &'a bsp::rcc::RCC,
-               dma: &'a bsp::dma::DMA,
-               pins: &'a bsp::gpio::Pins<'a>,
-               spi: &'a bsp::spi::SPI,
-               usb: &'a mut crate::usb::USB,
-               dap: &'a mut crate::dap::DAP<'a>,
+    pub fn new(
+        rcc: &'a bsp::rcc::RCC,
+        dma: &'a bsp::dma::DMA,
+        pins: &'a bsp::gpio::Pins<'a>,
+        spi: &'a bsp::spi::SPI,
+        usb: &'a mut crate::usb::USB,
+        dap: &'a mut crate::dap::DAP<'a>,
     ) -> Self {
         App {
             rcc,
@@ -36,7 +37,7 @@ impl<'a> App<'a> {
 
     /// Unsafety: this function should be called from the main context.
     /// No other contexts should be active at the same time.
-    pub unsafe fn setup(&mut self) {
+    pub unsafe fn setup(&mut self, serial: &'static str) {
         // Configure system clock
         #[cfg(not(feature = "turbo"))]
         let clocks = self.rcc.setup(CoreFrequency::F72MHz);
@@ -54,7 +55,9 @@ impl<'a> App<'a> {
         self.spi.disable();
 
         // Configure USB peripheral and connect to host
-        self.usb.setup(&clocks);
+        self.usb.setup(&clocks, serial);
+
+        self.pins.led_green.set_low();
     }
 
     pub fn poll(&mut self) {
@@ -87,10 +90,10 @@ impl<'a> App<'a> {
             }
             Request::Suspend => {
                 self.pins.high_impedance_mode();
-                self.pins.led.set_high();
+                self.pins.led_blue.set_high();
                 self.pins.tvcc_en.set_low();
                 self.spi.disable();
-            },
+            }
         }
     }
 }

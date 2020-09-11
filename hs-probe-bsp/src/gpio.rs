@@ -334,7 +334,9 @@ impl<'a> Pin<'a> {
 }
 
 pub struct Pins<'a> {
-    pub led: Pin<'a>,
+    pub led_red: Pin<'a>,
+    pub led_green: Pin<'a>,
+    pub led_blue: Pin<'a>,
 
     pub tvcc_en: Pin<'a>,
     pub reset: Pin<'a>,
@@ -366,7 +368,19 @@ impl<'a> Pins<'a> {
     /// Configure I/O pins
     pub fn setup(&self) {
         // Open-drain output to LED (active low).
-        self.led
+        self.led_red
+            .set_high()
+            .set_otype_opendrain()
+            .set_ospeed_low()
+            .set_mode_output();
+
+        self.led_green
+            .set_high()
+            .set_otype_opendrain()
+            .set_ospeed_low()
+            .set_mode_output();
+
+        self.led_blue
             .set_high()
             .set_otype_opendrain()
             .set_ospeed_low()

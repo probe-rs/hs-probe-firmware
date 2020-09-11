@@ -1,13 +1,17 @@
 [default.probe]
-usb_vid = "1209"
-usb_pid = "da42"
+# usb_vid = "1209"
+# usb_pid = "da42"
 protocol = "Swd"
 
 [default.flashing]
 enabled = true
 
+[default.reset]
+enabled = true
+halt_afterwards = false
+
 [default.general]
-chip = "STM32F723ICKx"
+chip = "STM32F723IEKx"
 
 [default.rtt]
 enabled = true
