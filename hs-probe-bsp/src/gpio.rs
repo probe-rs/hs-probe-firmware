@@ -461,12 +461,12 @@ impl<'a> Pins<'a> {
 
         // USB FullSpeed pins
         self.usb_dm
-            .set_af(10)
+            .set_af(12)
             .set_otype_pushpull()
             .set_ospeed_veryhigh()
             .set_mode_alternate();
         self.usb_dp
-            .set_af(10)
+            .set_af(12)
             .set_otype_pushpull()
             .set_ospeed_veryhigh()
             .set_mode_alternate();
