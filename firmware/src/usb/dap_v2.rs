@@ -65,7 +65,7 @@ impl<B: UsbBus> UsbClass<B> for CmsisDapV2<'_, B> {
 
     fn get_string(&self, index: StringIndex, _lang_id: u16) -> Option<&str> {
         if index == self.name {
-            Some("FFP CMSIS-DAP v2 Interface")
+            Some("HS-probe CMSIS-DAP v2 Interface")
         } else {
             None
         }

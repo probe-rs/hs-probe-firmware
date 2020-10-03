@@ -1,11 +1,12 @@
 #![no_std]
 #![no_main]
 
-use panic_rtt_target as _;
 use cortex_m_rt::entry;
-use rtt_target::{rtt_init_print, rprintln};
-pub use hs_probe_bsp as bsp;
 use git_version::git_version;
+pub use hs_probe_bsp as bsp;
+use panic_rtt_target as _;
+use rtt_target::{rtt_init_print, rprintln};
+use stm32_device_signature::device_id_hex;
 
 const GIT_VERSION: &str = git_version!();
 
@@ -67,7 +68,7 @@ fn main() -> ! {
     rprintln!("Starting...");
 
     // Initialise application, including system peripherals
-    unsafe { app.setup() };
+    unsafe { app.setup(device_id_hex()) };
 
     loop {
         // Process events
