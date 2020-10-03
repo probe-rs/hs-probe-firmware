@@ -34,7 +34,3 @@ jobs:
       - name: Build firmware
         working-directory: firmware
         run: cargo build --release
-
-      - name: Build examples
-        working-directory: hs-probe-examples
-        run: cargo build --release --examples
