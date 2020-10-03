@@ -4,3 +4,6 @@
 [submodule "usb-device"]
 	path = usb-device
 	url = https://github.com/Disasm/usb-device.git
+[submodule "usbd-serial"]
+	path = usbd-serial
+	url = https://github.com/Disasm/usbd-serial.git
