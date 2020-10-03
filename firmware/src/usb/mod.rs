@@ -1,11 +1,12 @@
 use stm32ral::{
-    otg_fs_global,
-    otg_fs_device,
-    otg_fs_pwrclk
+    usbphyc,
+    otg_hs_global,
+    otg_hs_device,
+    otg_hs_pwrclk
 };
 use crate::app::Request;
 use hs_probe_bsp::rcc::Clocks;
-use hs_probe_bsp::otg_fs::{UsbBusType, UsbBus};
+use hs_probe_bsp::otg_hs::{UsbBusType, UsbBus};
 use usb_device::prelude::*;
 use usb_device::bus::UsbBusAllocator;
 use usbd_serial::SerialPort;
@@ -20,9 +21,10 @@ use dap_v2::CmsisDapV2;
 
 
 struct UninitializedUSB {
-    global: otg_fs_global::Instance,
-    device: otg_fs_device::Instance,
-    pwrclk: otg_fs_pwrclk::Instance,
+    phy: usbphyc::Instance,
+    global: otg_hs_global::Instance,
+    device: otg_hs_device::Instance,
+    pwrclk: otg_hs_pwrclk::Instance,
 }
 
 struct InitializedUSB {
@@ -58,7 +60,7 @@ impl State {
     }
 }
 
-static mut EP_MEMORY: [u32; 1024] = [0; 1024];
+static mut EP_MEMORY: [u32; 4096] = [0; 4096];
 static mut USB_BUS: Option<UsbBusAllocator<UsbBusType>> = None;
 
 /// USB stack interface
@@ -69,11 +71,13 @@ pub struct USB {
 impl USB {
     /// Create a new USB object from the peripheral instance
     pub fn new(
-        global: otg_fs_global::Instance,
-        device: otg_fs_device::Instance,
-        pwrclk: otg_fs_pwrclk::Instance,
+        phy: usbphyc::Instance,
+        global: otg_hs_global::Instance,
+        device: otg_hs_device::Instance,
+        pwrclk: otg_hs_pwrclk::Instance,
     ) -> Self {
         let usb = UninitializedUSB {
+            phy,
             global,
             device,
             pwrclk
@@ -88,7 +92,8 @@ impl USB {
         let state = core::mem::replace(&mut self.state, State::Initializing);
         if let State::Uninitialized(usb) = state {
             cortex_m::interrupt::free(|_| unsafe {
-                let usb = hs_probe_bsp::otg_fs::USB {
+                let usb = hs_probe_bsp::otg_hs::USB {
+                    usb_phy: usb.phy,
                     usb_global: usb.global,
                     usb_device: usb.device,
                     usb_pwrclk: usb.pwrclk,
@@ -109,6 +114,7 @@ impl USB {
                     .product("HS-Probe with CMSIS-DAP Support")
                     .serial_number(serial_string)
                     .device_class(0)
+                    .max_packet_size_0(64)
                     .max_power(500)
                     .build();
                 let device_state = device.state();
