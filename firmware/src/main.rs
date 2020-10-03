@@ -60,6 +60,7 @@ fn main() -> ! {
         spi2_mosi: gpioi.pin(3),
         usb_dm: gpiob.pin(14),
         usb_dp: gpiob.pin(15),
+        usb_sel: gpiob.pin(10),
     };
 
     let swd = swd::SWD::new(&spi1, &pins);
