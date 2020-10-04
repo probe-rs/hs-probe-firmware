@@ -165,7 +165,7 @@ impl USB {
             }
 
             // Discard data from the serial interface
-            let mut buf = [0; 64];
+            let mut buf = [0; 512];
             let _ = usb.serial.read(&mut buf);
         }
         None

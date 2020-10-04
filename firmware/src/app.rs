@@ -1,10 +1,11 @@
 use hs_probe_bsp as bsp;
 use hs_probe_bsp::rcc::CoreFrequency;
+use crate::dap::DAPVersion;
 
 pub enum Request {
     Suspend,
     DAP1Command(([u8; 64], usize)),
-    DAP2Command(([u8; 64], usize)),
+    DAP2Command(([u8; 512], usize)),
 }
 
 pub struct App<'a> {
@@ -75,13 +76,13 @@ impl<'a> App<'a> {
     fn process_request(&mut self, req: Request) {
         match req {
             Request::DAP1Command((report, n)) => {
-                let response = self.dap.process_command(&report[..n]);
+                let response = self.dap.process_command(&report[..n], DAPVersion::V1);
                 if let Some(data) = response {
                     self.usb.dap1_reply(data);
                 }
             }
             Request::DAP2Command((report, n)) => {
-                let response = self.dap.process_command(&report[..n]);
+                let response = self.dap.process_command(&report[..n], DAPVersion::V2);
                 if let Some(data) = response {
                     self.usb.dap2_reply(data);
                 }
