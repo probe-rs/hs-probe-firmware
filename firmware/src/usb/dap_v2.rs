@@ -24,7 +24,7 @@ impl<B: UsbBus> CmsisDapV2<'_, B> {
     }
 
     pub fn process(&mut self) -> Option<Request> {
-        let mut buf = [0u8; 64];
+        let mut buf = [0u8; 512];
         match self.read_ep.read(&mut buf) {
             Ok(size) if size > 0 => Some(Request::DAP2Command((buf, size))),
             _ => None,

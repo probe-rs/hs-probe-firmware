@@ -10,6 +10,12 @@ use crate::{
 use core::convert::{TryFrom, TryInto};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 
+#[derive(Copy, Clone)]
+pub enum DAPVersion {
+    V1,
+    V2,
+}
+
 #[derive(Copy, Clone, TryFromPrimitive)]
 #[allow(non_camel_case_types)]
 #[repr(u8)]
@@ -253,10 +259,10 @@ impl<'a> DAP<'a> {
     /// Process a new CMSIS-DAP command from `report`.
     ///
     /// Returns Some(response) if a response should be transmitted.
-    pub fn process_command(&mut self, report: &[u8]) -> Option<&[u8]> {
+    pub fn process_command(&mut self, report: &[u8], version: DAPVersion) -> Option<&[u8]> {
         let req = Request::from_report(report)?;
         match req.command {
-            Command::DAP_Info => self.process_info(req),
+            Command::DAP_Info => self.process_info(req, version),
             Command::DAP_HostStatus => self.process_host_status(req),
             Command::DAP_Connect => self.process_connect(req),
             Command::DAP_Disconnect => self.process_disconnect(req),
@@ -294,7 +300,7 @@ impl<'a> DAP<'a> {
         self.uart.read(&mut self.rbuf)
     }
 
-    fn process_info(&mut self, mut req: Request) -> Option<ResponseWriter> {
+    fn process_info(&mut self, mut req: Request, version: DAPVersion) -> Option<ResponseWriter> {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         match DAPInfoID::try_from(req.next_u8()) {
             // Return 0-length string for VendorID, ProductID, SerialNumber
@@ -333,8 +339,16 @@ impl<'a> DAP<'a> {
             }
             Ok(DAPInfoID::MaxPacketSize) => {
                 resp.write_u8(2);
-                // Maximum of 64 bytes per packet
-                resp.write_u16(64);
+                match version {
+                    DAPVersion::V1 => {
+                        // Maximum of 64 bytes per packet
+                        resp.write_u16(64);
+                    }
+                    DAPVersion::V2 => {
+                        // Maximum of 512 bytes per packet
+                        resp.write_u16(512);
+                    }
+                }
             }
             _ => return None,
         }
