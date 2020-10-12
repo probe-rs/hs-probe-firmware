@@ -26,7 +26,7 @@ pub fn check() {
         let addr = 0x0010_0000;
         let sp = core::ptr::read_volatile(addr as *const u32);
         let rv = core::ptr::read_volatile((addr+4) as *const u32);
-        let bootloader: extern "C" fn() = core::mem::transmute(rv);
+        let bootloader: extern "C" fn() -> ! = core::mem::transmute(rv);
 
         // Write new stack pointer to MSP and call into system memory
         cortex_m::register::msp::write(sp);
