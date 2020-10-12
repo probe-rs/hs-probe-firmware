@@ -22,9 +22,6 @@ pub fn check() {
         // Otherwise, clear the flag and jump to system bootloader
         core::ptr::write_volatile(&mut FLAG, 0);
 
-        // Remap system memory to 0x0000_0000
-        write_reg!(syscfg, SYSCFG, MEMRMP, MEM_BOOT: 1);
-
         // Get new stack pointer and jump address
         let addr = 0x0010_0000;
         let sp = core::ptr::read_volatile(addr as *const u32);
