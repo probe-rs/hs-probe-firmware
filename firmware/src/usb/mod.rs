@@ -14,10 +14,12 @@ use usbd_serial::SerialPort;
 mod winusb;
 mod dap_v1;
 mod dap_v2;
+mod dfu;
 
 use winusb::MicrosoftDescriptors;
 use dap_v1::CmsisDapV1;
 use dap_v2::CmsisDapV2;
+use dfu::DfuRuntime;
 
 
 struct UninitializedUSB {
@@ -34,6 +36,7 @@ struct InitializedUSB {
     dap_v1: CmsisDapV1<'static, UsbBusType>,
     dap_v2: CmsisDapV2<'static, UsbBusType>,
     serial: SerialPort<'static, UsbBusType>,
+    dfu: DfuRuntime,
 }
 
 enum State {
@@ -108,6 +111,7 @@ impl USB {
                 let dap_v1 = CmsisDapV1::new(&usb_bus);
                 let dap_v2 = CmsisDapV2::new(&usb_bus);
                 let serial = SerialPort::new(&usb_bus);
+                let dfu = DfuRuntime::new(&usb_bus);
 
                 let device = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x1209, 0x4853))
                     .manufacturer("Probe-rs development team")
@@ -126,6 +130,7 @@ impl USB {
                     dap_v1,
                     dap_v2,
                     serial,
+                    dfu,
                 };
                 self.state = State::Initialized(usb)
             });
@@ -146,7 +151,9 @@ impl USB {
     /// triggering until all are processed.
     pub fn interrupt(&mut self) -> Option<Request> {
         let usb = self.state.as_initialized_mut();
-        if usb.device.poll(&mut [&mut usb.winusb, &mut usb.dap_v1, &mut usb.dap_v2, &mut usb.serial]) {
+        if usb.device.poll(&mut [
+            &mut usb.winusb, &mut usb.dap_v1, &mut usb.dap_v2, &mut usb.serial, &mut usb.dfu
+        ]) {
             let old_state = usb.device_state;
             let new_state = usb.device.state();
             usb.device_state = new_state;

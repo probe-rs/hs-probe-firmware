@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use cortex_m_rt::entry;
+use cortex_m_rt::{entry, pre_init};
 use git_version::git_version;
 pub use hs_probe_bsp as bsp;
 use panic_rtt_target as _;
@@ -14,6 +14,20 @@ mod app;
 mod dap;
 mod swd;
 mod usb;
+
+#[pre_init]
+unsafe fn pre_init() {
+    // Check if we should jump to system bootloader.
+    //
+    // When we receive the BOOTLOAD command over USB,
+    // we write a flag to a static and reset the chip,
+    // and `bootload::check()` will jump to the system
+    // memory bootloader if the flag is present.
+    //
+    // It must be called from pre_init as otherwise the
+    // flag is overwritten when statics are initialised.
+    bsp::bootload::check();
+}
 
 #[entry]
 fn main() -> ! {
