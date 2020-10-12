@@ -2,8 +2,8 @@ use usb_device::class_prelude::*;
 use usb_device::Result;
 use usb_device::control::{RequestType, Recipient};
 use crate::app::Request;
-use rtt_target::{rprintln};
 
+#[allow(unused)]
 mod request {
     pub const DFU_DETACH: u8 = 0;
     pub const DFU_DNLOAD: u8 = 1;
