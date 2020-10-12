@@ -74,7 +74,6 @@ impl<B: UsbBus> UsbClass<B> for DfuRuntime {
 
         match req.request {
             request::DFU_DETACH => {
-                rprintln!("bootload triggered");
                 hs_probe_bsp::bootload::bootload();
             },
             _ => {
