@@ -26,8 +26,9 @@ pub fn check() {
         write_reg!(syscfg, SYSCFG, MEMRMP, MEM_BOOT: 1);
 
         // Get new stack pointer and jump address
-        let sp = core::ptr::read_volatile(0 as *const u32);
-        let rv = core::ptr::read_volatile(4 as *const u32);
+        let addr = 0x0010_0000;
+        let sp = core::ptr::read_volatile(addr as *const u32);
+        let rv = core::ptr::read_volatile((addr+4) as *const u32);
         let bootloader: extern "C" fn() = core::mem::transmute(rv);
 
         // Write new stack pointer to MSP and call into system memory
