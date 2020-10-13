@@ -16,9 +16,9 @@ impl<B: UsbBus> CmsisDapV2<'_, B> {
         CmsisDapV2 {
             interface: alloc.interface(),
             name: alloc.string(),
-            read_ep: alloc.alloc(Some(EndpointAddress::from(0x02)), EndpointType::Bulk, 512, 0).expect("alloc_ep failed"),
-            write_ep: alloc.alloc(Some(EndpointAddress::from(0x82)), EndpointType::Bulk, 512, 0).expect("alloc_ep failed"),
-            trace_ep: alloc.alloc(Some(EndpointAddress::from(0x83)), EndpointType::Bulk, 512, 0).expect("alloc_ep failed"),
+            read_ep: alloc.alloc(Some(EndpointAddress::from(0x02)), EndpointType::Bulk, 512, 0xff).expect("alloc_ep failed"),
+            write_ep: alloc.alloc(Some(EndpointAddress::from(0x82)), EndpointType::Bulk, 512, 0xff).expect("alloc_ep failed"),
+            trace_ep: alloc.alloc(Some(EndpointAddress::from(0x83)), EndpointType::Bulk, 512, 0xff).expect("alloc_ep failed"),
             trace_busy: false
         }
     }
