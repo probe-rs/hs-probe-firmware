@@ -41,6 +41,15 @@ cd firmware
 cargo build --release --features turbo,...,...
 ```
 
+## Special thanks
+
+We would like to give special thanks to:
+
+- [Vadim Kaushan (@disasm)](https://github.com/disasm) for the USB implementation and helping bring the probe up.
+- [Adam Greig (@adamgreig)](https://github.com/adamgreig) for the SWD implementation and helping bring the probe up.
+- [Emil Fresk (@korken89)](https://github.com/korken89) for the hardware design.
+- [Noah Huesser (@yatekii)](https://github.com/yatekii) for the `probe-rs` initiative and helping bring the probe up.
+
 ## Licence
 
 Firmware is licensed under either of
