@@ -359,9 +359,10 @@ pub struct Pins<'a> {
     pub spi2_miso: Pin<'a>,
     pub spi2_mosi: Pin<'a>,
 
-    // USB FS
+    // USB HS
     pub usb_dm: Pin<'a>,
     pub usb_dp: Pin<'a>,
+    pub usb_sel: Pin<'a>,
 }
 
 impl<'a> Pins<'a> {
@@ -459,17 +460,22 @@ impl<'a> Pins<'a> {
             .set_ospeed_veryhigh()
             .set_mode_input();
 
-        // USB FullSpeed pins
+        // USB HighSpeed pins
         self.usb_dm
-            .set_af(10)
+            .set_af(12)
             .set_otype_pushpull()
             .set_ospeed_veryhigh()
             .set_mode_alternate();
         self.usb_dp
-            .set_af(10)
+            .set_af(12)
             .set_otype_pushpull()
             .set_ospeed_veryhigh()
             .set_mode_alternate();
+        self.usb_sel
+            .set_high()
+            .set_otype_pushpull()
+            .set_ospeed_low()
+            .set_mode_output();
     }
 
     /// Place SPI pins into high-impedance mode

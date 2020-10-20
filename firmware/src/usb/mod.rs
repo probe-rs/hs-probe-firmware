@@ -1,11 +1,12 @@
 use stm32ral::{
-    otg_fs_global,
-    otg_fs_device,
-    otg_fs_pwrclk
+    usbphyc,
+    otg_hs_global,
+    otg_hs_device,
+    otg_hs_pwrclk
 };
 use crate::app::Request;
 use hs_probe_bsp::rcc::Clocks;
-use hs_probe_bsp::otg_fs::{UsbBusType, UsbBus};
+use hs_probe_bsp::otg_hs::{UsbBusType, UsbBus};
 use usb_device::prelude::*;
 use usb_device::bus::UsbBusAllocator;
 use usbd_serial::SerialPort;
@@ -13,16 +14,19 @@ use usbd_serial::SerialPort;
 mod winusb;
 mod dap_v1;
 mod dap_v2;
+mod dfu;
 
 use winusb::MicrosoftDescriptors;
 use dap_v1::CmsisDapV1;
 use dap_v2::CmsisDapV2;
+use dfu::DfuRuntime;
 
 
 struct UninitializedUSB {
-    global: otg_fs_global::Instance,
-    device: otg_fs_device::Instance,
-    pwrclk: otg_fs_pwrclk::Instance,
+    phy: usbphyc::Instance,
+    global: otg_hs_global::Instance,
+    device: otg_hs_device::Instance,
+    pwrclk: otg_hs_pwrclk::Instance,
 }
 
 struct InitializedUSB {
@@ -32,6 +36,7 @@ struct InitializedUSB {
     dap_v1: CmsisDapV1<'static, UsbBusType>,
     dap_v2: CmsisDapV2<'static, UsbBusType>,
     serial: SerialPort<'static, UsbBusType>,
+    dfu: DfuRuntime,
 }
 
 enum State {
@@ -58,7 +63,7 @@ impl State {
     }
 }
 
-static mut EP_MEMORY: [u32; 1024] = [0; 1024];
+static mut EP_MEMORY: [u32; 4096] = [0; 4096];
 static mut USB_BUS: Option<UsbBusAllocator<UsbBusType>> = None;
 
 /// USB stack interface
@@ -69,11 +74,13 @@ pub struct USB {
 impl USB {
     /// Create a new USB object from the peripheral instance
     pub fn new(
-        global: otg_fs_global::Instance,
-        device: otg_fs_device::Instance,
-        pwrclk: otg_fs_pwrclk::Instance,
+        phy: usbphyc::Instance,
+        global: otg_hs_global::Instance,
+        device: otg_hs_device::Instance,
+        pwrclk: otg_hs_pwrclk::Instance,
     ) -> Self {
         let usb = UninitializedUSB {
+            phy,
             global,
             device,
             pwrclk
@@ -88,7 +95,8 @@ impl USB {
         let state = core::mem::replace(&mut self.state, State::Initializing);
         if let State::Uninitialized(usb) = state {
             cortex_m::interrupt::free(|_| unsafe {
-                let usb = hs_probe_bsp::otg_fs::USB {
+                let usb = hs_probe_bsp::otg_hs::USB {
+                    usb_phy: usb.phy,
                     usb_global: usb.global,
                     usb_device: usb.device,
                     usb_pwrclk: usb.pwrclk,
@@ -103,12 +111,14 @@ impl USB {
                 let dap_v1 = CmsisDapV1::new(&usb_bus);
                 let dap_v2 = CmsisDapV2::new(&usb_bus);
                 let serial = SerialPort::new(&usb_bus);
+                let dfu = DfuRuntime::new(&usb_bus);
 
                 let device = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x1209, 0x4853))
                     .manufacturer("Probe-rs development team")
                     .product("HS-Probe with CMSIS-DAP Support")
                     .serial_number(serial_string)
                     .device_class(0)
+                    .max_packet_size_0(64)
                     .max_power(500)
                     .build();
                 let device_state = device.state();
@@ -120,6 +130,7 @@ impl USB {
                     dap_v1,
                     dap_v2,
                     serial,
+                    dfu,
                 };
                 self.state = State::Initialized(usb)
             });
@@ -140,7 +151,9 @@ impl USB {
     /// triggering until all are processed.
     pub fn interrupt(&mut self) -> Option<Request> {
         let usb = self.state.as_initialized_mut();
-        if usb.device.poll(&mut [&mut usb.winusb, &mut usb.dap_v1, &mut usb.dap_v2, &mut usb.serial]) {
+        if usb.device.poll(&mut [
+            &mut usb.winusb, &mut usb.dap_v1, &mut usb.dap_v2, &mut usb.serial, &mut usb.dfu
+        ]) {
             let old_state = usb.device_state;
             let new_state = usb.device.state();
             usb.device_state = new_state;
@@ -159,7 +172,7 @@ impl USB {
             }
 
             // Discard data from the serial interface
-            let mut buf = [0; 64];
+            let mut buf = [0; 512];
             let _ = usb.serial.read(&mut buf);
         }
         None
