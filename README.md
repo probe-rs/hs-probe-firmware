@@ -29,7 +29,17 @@ It will automatically restart into DFU mode and load the firmware.
 
 ## Feature flags
 
-One can update the feature flags
+The following feature flags exists:
+
+* `turbo`, this will the MCU speed to 216 MHz instead of the current default of 72 MHz.
+* ...
+
+To build with features, the following command is used:
+
+```
+cd firmware
+cargo build --release --features turbo,...,...
+```
 
 ## Licence
 
