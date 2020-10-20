@@ -1,14 +1,35 @@
 # hs-probe-firmware
 
-A CMSIS-DAP firmware for [hs-probe](https://github.com/korken89/hs-probe).
-
+A CMSIS-DAP firmware for [hs-probe](https://github.com/korken89/hs-probe). This includes support
+for DAPv1 and DAPv2 over high-speed (480 MBit/s) USB 2.0.
 
 ## Building the firmware
 
 ```
 cd firmware
-cargo build --release --features turbo
+cargo build --release
 ```
+
+## Loading the firmware
+
+The HS-Probe supports `dfu-util` and can have its firmware loaded via it. To generate the bin, run:
+
+```console
+cd firmware
+cargo objcopy --release -- -O binary firmware.bin
+```
+
+And load it into the HS-Probe with:
+
+```console
+dfu-util -a 0 -s 0x08000000:leave -D firmware.bin
+```
+
+It will automatically restart into DFU mode and load the firmware.
+
+## Feature flags
+
+One can update the feature flags
 
 ## Licence
 
