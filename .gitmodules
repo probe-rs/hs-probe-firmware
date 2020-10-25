@@ -1,6 +1,3 @@
-[submodule "stm32f7xx-hal"]
-	path = stm32f7xx-hal
-	url = https://github.com/Disasm/stm32f7xx-hal.git
 [submodule "usb-device"]
 	path = usb-device
 	url = https://github.com/Disasm/usb-device.git

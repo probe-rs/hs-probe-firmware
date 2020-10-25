@@ -2,13 +2,11 @@
 members = [
     "firmware",
     "hs-probe-bsp",
-    "stm32f7xx-hal",
     "usb-device",
     "usbd-serial",
 ]
 
 [patch.crates-io]
-stm32f7xx-hal = { path = "stm32f7xx-hal" }
 usb-device = { path = "usb-device" }
 usbd-serial = { path = "usbd-serial" }
 
