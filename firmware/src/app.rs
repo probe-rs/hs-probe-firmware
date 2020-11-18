@@ -58,7 +58,8 @@ impl<'a> App<'a> {
         // Configure USB peripheral and connect to host
         self.usb.setup(&clocks, serial);
 
-        self.pins.led_green.set_low();
+        self.pins.led_red.set_low();
+        // self.pins.t5v_en.set_high();
     }
 
     pub fn poll(&mut self) {
