@@ -8,6 +8,7 @@ use stm32ral::{modify_reg, read_reg, write_reg};
 use super::dma::DMA;
 use super::gpio::Pins;
 use crate::rcc::Clocks;
+use core::ops::Deref;
 
 pub struct SPI {
     spi: spi::Instance,
@@ -32,38 +33,13 @@ impl SPI {
         SPI { spi, base_clock: AtomicU32::new(0) }
     }
 
-    /// Set up SPI peripheral for normal SPI mode, either flash or FPGA
-    pub fn setup_spi(&self) {
-        // 12MHz, SPI Mode 3 (CPOL=1 CPHA=1)
-        write_reg!(
-            spi,
-            self.spi,
-            CR1,
-            BIDIMODE: Unidirectional,
-            CRCEN: Disabled,
-            RXONLY: FullDuplex,
-            SSM: Enabled,
-            SSI: SlaveNotSelected,
-            LSBFIRST: MSBFirst,
-            BR: Div4,
-            MSTR: Master,
-            CPOL: IdleHigh,
-            CPHA: SecondEdge,
-            SPE: Disabled
-        );
-        write_reg!(
-            spi,
-            self.spi,
-            CR2,
-            FRXTH: Quarter,
-            DS: EightBit,
-            TXDMAEN: Enabled,
-            RXDMAEN: Enabled
-        );
-    }
-
     pub fn set_base_clock(&self, clocks: &Clocks) {
-        self.base_clock.store(clocks.pclk2(), Ordering::SeqCst);
+        if self.spi.deref() as *const _ == spi::SPI1 {
+            self.base_clock.store(clocks.pclk2(), Ordering::SeqCst);
+        }
+        if self.spi.deref() as *const _ == spi::SPI2 {
+            self.base_clock.store(clocks.pclk1(), Ordering::SeqCst);
+        }
     }
 
     /// Set up SPI peripheral for SWD mode.
@@ -85,6 +61,36 @@ impl SPI {
             CPOL: IdleHigh,
             CPHA: SecondEdge,
             SPE: Enabled
+        );
+    }
+
+    /// Set up SPI peripheral for JTAG mode
+    pub fn setup_jtag(&self) {
+        // SPI Mode 3 (CPOL=1 CPHA=1)
+        write_reg!(
+            spi,
+            self.spi,
+            CR1,
+            BIDIMODE: Unidirectional,
+            CRCEN: Disabled,
+            RXONLY: FullDuplex,
+            SSM: Enabled,
+            SSI: SlaveNotSelected,
+            LSBFIRST: LSBFirst,
+            BR: Div256,
+            MSTR: Master,
+            CPOL: IdleLow,
+            CPHA: FirstEdge,
+            SPE: Disabled
+        );
+        write_reg!(
+            spi,
+            self.spi,
+            CR2,
+            FRXTH: Quarter,
+            DS: EightBit,
+            TXDMAEN: Enabled,
+            RXDMAEN: Enabled
         );
     }
 
@@ -132,21 +138,21 @@ impl SPI {
         write_reg!(spi, self.spi, CR1, SPE: Disabled);
     }
 
-    /// Transmit `data` and write the same number of bytes into `rxdata`.
-    pub fn exchange(&self, dma: &DMA, txdata: &[u8], rxdata: &mut [u8]) {
+    /// Transmit `txdata` and write the same number of bytes into `rxdata`.
+    pub fn jtag_exchange(&self, dma: &DMA, txdata: &[u8], rxdata: &mut [u8]) {
         debug_assert!(rxdata.len() >= 64);
 
         // Set up DMA transfer (configures NDTR and MAR and enables streams)
-        dma.spi1_enable(txdata, &mut rxdata[..txdata.len()]);
+        dma.spi2_enable(txdata, &mut rxdata[..txdata.len()]);
 
         // Start SPI transfer
         modify_reg!(spi, self.spi, CR1, SPE: Enabled);
 
         // Busy wait for RX DMA completion (at most 43µs)
-        while dma.spi1_busy() {}
+        while dma.spi2_busy() {}
 
         // Disable SPI and DMA
-        dma.spi1_disable();
+        dma.spi2_disable();
         modify_reg!(spi, self.spi, CR1, SPE: Disabled);
     }
 

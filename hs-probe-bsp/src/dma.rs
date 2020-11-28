@@ -219,6 +219,47 @@ impl DMA {
         modify_reg!(dma, self.dma2, CR3, EN: Disabled);
     }
 
+    /// Sets up and enables a DMA transmit/receive for SPI2 (streams 3 and 4, channel 0)
+    pub fn spi2_enable(&self, tx: &[u8], rx: &mut [u8]) {
+        write_reg!(
+            dma,
+            self.dma1,
+            LIFCR,
+            CTCIF3: Clear,
+            CHTIF3: Clear,
+            CTEIF3: Clear,
+            CDMEIF3: Clear,
+            CFEIF3: Clear
+        );
+        write_reg!(
+            dma,
+            self.dma1,
+            HIFCR,
+            CTCIF4: Clear,
+            CHTIF4: Clear,
+            CTEIF4: Clear,
+            CDMEIF4: Clear,
+            CFEIF4: Clear
+        );
+        write_reg!(dma, self.dma1, NDTR3, rx.len() as u32);
+        write_reg!(dma, self.dma1, NDTR4, tx.len() as u32);
+        write_reg!(dma, self.dma1, M0AR3, rx.as_mut_ptr() as u32);
+        write_reg!(dma, self.dma1, M0AR4, tx.as_ptr() as u32);
+        modify_reg!(dma, self.dma1, CR3, EN: Enabled);
+        modify_reg!(dma, self.dma1, CR4, EN: Enabled);
+    }
+
+    /// Check if SPI2 transaction is still ongoing
+    pub fn spi2_busy(&self) -> bool {
+        read_reg!(dma, self.dma1, LISR, TCIF3 == NotComplete)
+    }
+
+    /// Stop SPI2 DMA
+    pub fn spi2_disable(&self) {
+        modify_reg!(dma, self.dma1, CR3, EN: Disabled);
+        modify_reg!(dma, self.dma1, CR4, EN: Disabled);
+    }
+
     /// Start USART1 reception into provided buffer
     pub fn usart1_start(&self, rx: &mut [u8]) {
         write_reg!(
