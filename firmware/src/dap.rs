@@ -400,6 +400,7 @@ impl<'a> DAP<'a> {
             }
             Ok(ConnectPort::JTAG) => {
                 self.pins.jtag_mode();
+                self.jtag.spi_enable();
                 self.mode = Some(DAPMode::JTAG);
                 resp.write_u8(ConnectPortResponse::JTAG as u8);
             }
@@ -415,6 +416,7 @@ impl<'a> DAP<'a> {
         self.pins.high_impedance_mode();
         self.mode = None;
         self.swd.spi_disable();
+        self.jtag.spi_disable();
         resp.write_ok();
         Some(resp)
     }
