@@ -12,24 +12,24 @@ impl<'a> GPIO {
 
     pub fn pin(&'a self, n: u8) -> Pin<'a> {
         assert!(n < 16);
+        let n = unsafe { core::mem::transmute(n) };
         Pin { n, port: self }
     }
 
-    pub fn set_high(&'a self, n: u8) -> &Self {
-        assert!(n < 16);
-        write_reg!(gpio, self.p, BSRR, 1 << n);
+    #[inline(always)]
+    pub fn set_high(&'a self, n: PinIndex) -> &Self {
+        write_reg!(gpio, self.p, BSRR, 1 << (n as u8));
         self
     }
 
-    pub fn set_low(&'a self, n: u8) -> &Self {
-        assert!(n < 16);
-        write_reg!(gpio, self.p, BSRR, 1 << (n + 16));
+    #[inline(always)]
+    pub fn set_low(&'a self, n: PinIndex) -> &Self {
+        write_reg!(gpio, self.p, BSRR, 1 << ((n as u8) + 16));
         self
     }
 
-    pub fn toggle(&'a self, n: u8) -> &Self {
-        assert!(n < 16);
-        let pin = (read_reg!(gpio, self.p, IDR) >> n) & 1;
+    pub fn toggle(&'a self, n: PinIndex) -> &Self {
+        let pin = (read_reg!(gpio, self.p, IDR) >> (n as u8)) & 1;
         if pin == 1 {
             self.set_low(n)
         } else {
@@ -37,17 +37,16 @@ impl<'a> GPIO {
         }
     }
 
-    pub fn set_mode(&'a self, n: u8, mode: u32) -> &Self {
-        assert!(n < 16);
-        let offset = n * 2;
+    pub fn set_mode(&'a self, n: PinIndex, mode: u32) -> &Self {
+        let offset = (n as u8) * 2;
         let mask = 0b11 << offset;
         let val = (mode << offset) & mask;
         modify_reg!(gpio, self.p, MODER, |r| (r & !mask) | val);
         self
     }
 
-    pub const fn memoise_mode(n: u8, mode: u32) -> MemoisedMode {
-        let n = n & 0xF;
+    pub const fn memoise_mode(n: PinIndex, mode: u32) -> MemoisedMode {
+        let n = (n as u8) & 0xF;
         let offset = n * 2;
         let mask = 0b11 << offset;
         let value = (mode << offset) & mask;
@@ -59,82 +58,80 @@ impl<'a> GPIO {
         self
     }
 
-    pub fn set_mode_input(&'a self, n: u8) -> &Self {
+    pub fn set_mode_input(&'a self, n: PinIndex) -> &Self {
         self.set_mode(n, gpio::MODER::MODER0::RW::Input)
     }
 
-    pub const fn memoise_mode_input(n: u8) -> MemoisedMode {
+    pub const fn memoise_mode_input(n: PinIndex) -> MemoisedMode {
         Self::memoise_mode(n, gpio::MODER::MODER0::RW::Input)
     }
 
-    pub fn set_mode_output(&'a self, n: u8) -> &Self {
+    pub fn set_mode_output(&'a self, n: PinIndex) -> &Self {
         self.set_mode(n, gpio::MODER::MODER0::RW::Output)
     }
 
-    pub const fn memoise_mode_output(n: u8) -> MemoisedMode {
+    pub const fn memoise_mode_output(n: PinIndex) -> MemoisedMode {
         Self::memoise_mode(n, gpio::MODER::MODER0::RW::Output)
     }
 
-    pub fn set_mode_alternate(&'a self, n: u8) -> &Self {
+    pub fn set_mode_alternate(&'a self, n: PinIndex) -> &Self {
         self.set_mode(n, gpio::MODER::MODER0::RW::Alternate)
     }
 
-    pub const fn memoise_mode_alternate(n: u8) -> MemoisedMode {
+    pub const fn memoise_mode_alternate(n: PinIndex) -> MemoisedMode {
         Self::memoise_mode(n, gpio::MODER::MODER0::RW::Alternate)
     }
 
-    pub fn set_mode_analog(&'a self, n: u8) -> &Self {
+    pub fn set_mode_analog(&'a self, n: PinIndex) -> &Self {
         self.set_mode(n, gpio::MODER::MODER0::RW::Analog)
     }
 
-    pub const fn memoise_mode_analog(n: u8) -> MemoisedMode {
+    pub const fn memoise_mode_analog(n: PinIndex) -> MemoisedMode {
         Self::memoise_mode(n, gpio::MODER::MODER0::RW::Analog)
     }
 
-    pub fn set_otype(&'a self, n: u8, otype: u32) -> &Self {
-        assert!(n < 16);
-        let offset = n;
+    pub fn set_otype(&'a self, n: PinIndex, otype: u32) -> &Self {
+        let offset = n as u8;
         let mask = 0b1 << offset;
         let val = (otype << offset) & mask;
         modify_reg!(gpio, self.p, OTYPER, |r| (r & !mask) | val);
         self
     }
 
-    pub fn set_otype_opendrain(&'a self, n: u8) -> &Self {
+    pub fn set_otype_opendrain(&'a self, n: PinIndex) -> &Self {
         self.set_otype(n, gpio::OTYPER::OT0::RW::OpenDrain)
     }
 
-    pub fn set_otype_pushpull(&'a self, n: u8) -> &Self {
+    pub fn set_otype_pushpull(&'a self, n: PinIndex) -> &Self {
         self.set_otype(n, gpio::OTYPER::OT0::RW::PushPull)
     }
 
-    pub fn set_ospeed(&'a self, n: u8, ospeed: u32) -> &Self {
-        assert!(n < 16);
-        let offset = n * 2;
+    pub fn set_ospeed(&'a self, n: PinIndex, ospeed: u32) -> &Self {
+        let offset = (n as u8) * 2;
         let mask = 0b11 << offset;
         let val = (ospeed << offset) & mask;
         modify_reg!(gpio, self.p, OSPEEDR, |r| (r & !mask) | val);
         self
     }
 
-    pub fn set_ospeed_low(&'a self, n: u8) -> &Self {
+    pub fn set_ospeed_low(&'a self, n: PinIndex) -> &Self {
         self.set_ospeed(n, gpio::OSPEEDR::OSPEEDR0::RW::LowSpeed)
     }
 
-    pub fn set_ospeed_medium(&'a self, n: u8) -> &Self {
+    pub fn set_ospeed_medium(&'a self, n: PinIndex) -> &Self {
         self.set_ospeed(n, gpio::OSPEEDR::OSPEEDR0::RW::MediumSpeed)
     }
 
-    pub fn set_ospeed_high(&'a self, n: u8) -> &Self {
+    pub fn set_ospeed_high(&'a self, n: PinIndex) -> &Self {
         self.set_ospeed(n, gpio::OSPEEDR::OSPEEDR0::RW::HighSpeed)
     }
 
-    pub fn set_ospeed_veryhigh(&'a self, n: u8) -> &Self {
+    pub fn set_ospeed_veryhigh(&'a self, n: PinIndex) -> &Self {
         self.set_ospeed(n, gpio::OSPEEDR::OSPEEDR0::RW::VeryHighSpeed)
     }
 
-    pub fn set_af(&'a self, n: u8, af: u32) -> &Self {
-        assert!(n < 16);
+    pub fn set_af(&'a self, n: PinIndex, af: u32) -> &Self {
+        let n = n as u8;
         if n < 8 {
             let offset = n * 4;
             let mask = 0b1111 << offset;
@@ -149,23 +146,23 @@ impl<'a> GPIO {
         self
     }
 
-    pub fn set_pull(&'a self, n: u8, pull: u32) -> &Self {
-        let offset = n * 2;
+    pub fn set_pull(&'a self, n: PinIndex, pull: u32) -> &Self {
+        let offset = (n as u8) * 2;
         let mask = 0b11 << offset;
         let val = (pull << offset) & mask;
         modify_reg!(gpio, self.p, PUPDR, |r| (r & !mask) | val);
         self
     }
 
-    pub fn set_pull_floating(&'a self, n: u8) -> &Self {
+    pub fn set_pull_floating(&'a self, n: PinIndex) -> &Self {
         self.set_pull(n, gpio::PUPDR::PUPDR0::RW::Floating)
     }
 
-    pub fn set_pull_up(&'a self, n: u8) -> &Self {
+    pub fn set_pull_up(&'a self, n: PinIndex) -> &Self {
         self.set_pull(n, gpio::PUPDR::PUPDR0::RW::PullUp)
     }
 
-    pub fn set_pull_down(&'a self, n: u8) -> &Self {
+    pub fn set_pull_down(&'a self, n: PinIndex) -> &Self {
         self.set_pull(n, gpio::PUPDR::PUPDR0::RW::PullDown)
     }
 
@@ -173,7 +170,8 @@ impl<'a> GPIO {
         read_reg!(gpio, self.p, IDR)
     }
 
-    pub fn get_pin_idr(&'a self, n: u8) -> u32 {
+    pub fn get_pin_idr(&'a self, n: PinIndex) -> u32 {
+        let n = n as u8;
         (self.get_idr() & (1 << n)) >> n
     }
 }
@@ -191,8 +189,29 @@ pub enum PinState {
     High = 1,
 }
 
+#[derive(Copy, Clone)]
+#[repr(u8)]
+pub enum PinIndex {
+    Pin0 = 0,
+    Pin1 = 1,
+    Pin2 = 2,
+    Pin3 = 3,
+    Pin4 = 4,
+    Pin5 = 5,
+    Pin6 = 6,
+    Pin7 = 7,
+    Pin8 = 8,
+    Pin9 = 9,
+    Pin10 = 10,
+    Pin11 = 11,
+    Pin12 = 12,
+    Pin13 = 13,
+    Pin14 = 14,
+    Pin15 = 15,
+}
+
 pub struct Pin<'a> {
-    n: u8,
+    n: PinIndex,
     port: &'a GPIO,
 }
 
