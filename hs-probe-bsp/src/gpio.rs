@@ -197,14 +197,24 @@ pub struct Pin<'a> {
 }
 
 impl<'a> Pin<'a> {
+    #[inline(always)]
     pub fn set_high(&self) -> &Self {
         self.port.set_high(self.n);
         self
     }
 
+    #[inline(always)]
     pub fn set_low(&self) -> &Self {
         self.port.set_low(self.n);
         self
+    }
+
+    #[inline(always)]
+    pub fn set_bool(&self, state: bool) {
+        match state {
+            false => self.set_low(),
+            true => self.set_high(),
+        };
     }
 
     pub fn set_state(&self, state: PinState) {
@@ -496,10 +506,10 @@ impl<'a> Pins<'a> {
         self.usart1_rx.set_mode_input();
         self.spi1_clk.set_mode_input();
         self.spi1_miso.set_mode_input();
-        self.spi1_mosi.set_mode_alternate();
-        self.spi2_clk.set_mode_alternate();
-        self.spi2_miso.set_mode_alternate();
-        self.spi2_mosi.set_mode_alternate();
+        self.spi1_mosi.set_mode_output();
+        self.spi2_clk.set_mode_output();
+        self.spi2_miso.set_mode_input();
+        self.spi2_mosi.set_mode_output();
     }
 
     /// Place SPI pins into SWD mode

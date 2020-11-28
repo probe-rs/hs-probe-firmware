@@ -15,6 +15,7 @@ pub struct App<'a> {
     spi: &'a bsp::spi::SPI,
     usb: &'a mut crate::usb::USB,
     dap: &'a mut crate::dap::DAP<'a>,
+    delay: &'a bsp::delay::Delay,
 }
 
 impl<'a> App<'a> {
@@ -25,6 +26,7 @@ impl<'a> App<'a> {
         spi: &'a bsp::spi::SPI,
         usb: &'a mut crate::usb::USB,
         dap: &'a mut crate::dap::DAP<'a>,
+        delay: &'a bsp::delay::Delay,
     ) -> Self {
         App {
             rcc,
@@ -33,6 +35,7 @@ impl<'a> App<'a> {
             spi,
             usb,
             dap,
+            delay,
         }
     }
 
@@ -44,6 +47,8 @@ impl<'a> App<'a> {
         let clocks = self.rcc.setup(CoreFrequency::F72MHz);
         #[cfg(feature = "turbo")]
         let clocks = self.rcc.setup(CoreFrequency::F216MHz);
+
+        self.delay.set_sysclk(&clocks);
 
         // Configure DMA for SPI1, SPI2, USART1 and USART2 transfers
         self.dma.setup();

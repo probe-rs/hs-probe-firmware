@@ -5,6 +5,7 @@
 
 use crate::{
     bsp::{gpio::Pins, uart::UART},
+    jtag,
     swd,
 };
 use core::convert::{TryFrom, TryInto};
@@ -102,8 +103,6 @@ enum ConnectPort {
 enum ConnectPortResponse {
     Failed = 0,
     SWD = 1,
-
-    #[allow(unused)]
     JTAG = 2,
 }
 
@@ -228,29 +227,40 @@ impl<'a> ResponseWriter<'a> {
         self.buf[idx]
     }
 
+    pub fn skip(&mut self, n: usize) {
+        self.idx += n;
+    }
+
     pub fn finished(self) -> &'a [u8] {
         &self.buf[..self.idx]
     }
 }
 
+enum DAPMode {
+    SWD,
+    JTAG,
+}
+
 pub struct DAP<'a> {
     swd: swd::SWD<'a>,
+    jtag: jtag::JTAG<'a>,
     uart: &'a mut UART<'a>,
     pins: &'a Pins<'a>,
     rbuf: [u8; 512],
-    configured: bool,
+    mode: Option<DAPMode>,
     swo_streaming: bool,
     match_retries: usize,
 }
 
 impl<'a> DAP<'a> {
-    pub fn new(swd: swd::SWD<'a>, uart: &'a mut UART<'a>, pins: &'a Pins) -> Self {
+    pub fn new(swd: swd::SWD<'a>, jtag: jtag::JTAG<'a>, uart: &'a mut UART<'a>, pins: &'a Pins) -> Self {
         DAP {
             swd,
+            jtag,
             uart,
             pins,
             rbuf: [0u8; 512],
-            configured: false,
+            mode: None,
             swo_streaming: false,
             match_retries: 5,
         }
@@ -280,6 +290,7 @@ impl<'a> DAP<'a> {
             Command::DAP_SWO_Status => self.process_swo_status(req),
             Command::DAP_SWO_ExtendedStatus => self.process_swo_extended_status(req),
             Command::DAP_SWO_Data => self.process_swo_data(req),
+            Command::DAP_JTAG_Sequence => self.process_jtag_sequence(req),
             Command::DAP_TransferConfigure => self.process_transfer_configure(req),
             Command::DAP_Transfer => self.process_transfer(req),
             Command::DAP_TransferBlock => self.process_transfer_block(req),
@@ -320,13 +331,13 @@ impl<'a> DAP<'a> {
             Ok(DAPInfoID::Capabilities) => {
                 resp.write_u8(1);
                 // Bit 0: SWD supported
-                // Bit 1: JTAG not supported
+                // Bit 1: JTAG supported
                 // Bit 2: SWO UART supported
                 // Bit 3: SWO Manchester not supported
                 // Bit 4: Atomic commands not supported
                 // Bit 5: Test Domain Timer not supported
                 // Bit 6: SWO Streaming Trace supported
-                resp.write_u8(0b0100_0101);
+                resp.write_u8(0b0100_0111);
             }
             Ok(DAPInfoID::SWOTraceBufferSize) => {
                 resp.write_u8(4);
@@ -384,8 +395,13 @@ impl<'a> DAP<'a> {
             Ok(ConnectPort::Default) | Ok(ConnectPort::SWD) => {
                 self.pins.swd_mode();
                 self.swd.spi_enable();
-                self.configured = true;
+                self.mode = Some(DAPMode::SWD);
                 resp.write_u8(ConnectPortResponse::SWD as u8);
+            }
+            Ok(ConnectPort::JTAG) => {
+                self.pins.jtag_mode();
+                self.mode = Some(DAPMode::JTAG);
+                resp.write_u8(ConnectPortResponse::JTAG as u8);
             }
             _ => {
                 resp.write_u8(ConnectPortResponse::Failed as u8);
@@ -397,7 +413,7 @@ impl<'a> DAP<'a> {
     fn process_disconnect(&mut self, req: Request) -> Option<ResponseWriter> {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         self.pins.high_impedance_mode();
-        self.configured = false;
+        self.mode = None;
         self.swd.spi_disable();
         resp.write_ok();
         Some(resp)
@@ -405,7 +421,7 @@ impl<'a> DAP<'a> {
 
     fn process_write_abort(&mut self, mut req: Request) -> Option<ResponseWriter> {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
-        if !self.configured {
+        if self.mode.is_none() {
             resp.write_err();
             return Some(resp);
         }
@@ -491,12 +507,26 @@ impl<'a> DAP<'a> {
     fn process_swj_clock(&mut self, mut req: Request) -> Option<ResponseWriter> {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         let clock = req.next_u32();
-        let valid = self.swd.set_clock(clock);
-        if valid {
-            resp.write_ok();
-        } else {
-            resp.write_err();
+
+        match self.mode {
+            Some(DAPMode::SWD) => {
+                self.jtag.set_clock(clock);
+                let valid = self.swd.set_clock(clock);
+                if valid {
+                    resp.write_ok();
+                } else {
+                    resp.write_err();
+                }
+            }
+            Some(DAPMode::JTAG) => {
+                self.jtag.set_clock(clock);
+                resp.write_ok();
+            }
+            None => {
+                resp.write_err();
+            }
         }
+
         Some(resp)
     }
 
@@ -505,24 +535,33 @@ impl<'a> DAP<'a> {
         let nbits: usize = match req.next_u8() {
             // CMSIS-DAP says 0 means 256 bits
             0 => 256,
-            // We only support whole byte sequences at the moment,
-            // but pyOCD sends 51 1s for line reset, with 7 bytes of 0xFF.
-            // Remap 51 to 56 for this sneaky purpose.
-            // I am sure it will not bite me later.
-            51 => 56,
             // Other integers are normal.
             n => n as usize,
         };
 
-        // We only support writing multiples of 8 bits
-        if nbits % 8 != 0 {
+        let payload = req.rest();
+        let nbytes = (nbits + 7) / 8;
+        let seq = if nbytes < payload.len() {
+            &payload[..nbytes]
+        } else {
             resp.write_err();
             return Some(resp);
-        }
+        };
 
-        let nbytes = nbits / 8;
-        let seq = &req.rest()[..nbytes];
-        self.swd.tx_sequence(seq);
+        match self.mode {
+            Some(DAPMode::SWD) => {
+                self.pins.jtag_mode();
+                self.jtag.tms_sequence(seq, nbits);
+                self.pins.swd_mode();
+            }
+            Some(DAPMode::JTAG) => {
+                self.jtag.tms_sequence(seq, nbits);
+            }
+            None => {
+                resp.write_err();
+                return Some(resp);
+            }
+        }
 
         resp.write_ok();
         Some(resp)
@@ -646,6 +685,31 @@ impl<'a> DAP<'a> {
                 resp.write_slice(data);
             }
         }
+        Some(resp)
+    }
+
+    fn process_jtag_sequence(&mut self, mut req: Request) -> Option<ResponseWriter> {
+        match self.mode {
+            Some(DAPMode::JTAG) => {}
+            _ => {
+                let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+                resp.write_err();
+                return Some(resp);
+            }
+        }
+
+        // Extract command for later use
+        let command = req.command;
+
+        // Run requested JTAG sequences. Cannot fail.
+        // Returned data is written into rbuf before it's turned into a Response.
+        let size = self.jtag.sequences(req.rest(), &mut self.rbuf[2..]);
+
+        // Create a response wrapping the new data.
+        let mut resp = ResponseWriter::new(command, &mut self.rbuf);
+        resp.write_ok();
+        resp.skip(size);
+
         Some(resp)
     }
 
