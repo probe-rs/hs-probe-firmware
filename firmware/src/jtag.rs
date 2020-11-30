@@ -222,10 +222,8 @@ impl<'a> JTAG<'a> {
                 self.pins.tdi.set_bool(byte & (1 << bit_idx) != 0);
                 self.pins.tck.set_low();
                 last = self.delay.delay_ticks_from_last(half_period_ticks, last);
-                //cortex_m::asm::delay(10);
                 self.pins.tck.set_high();
                 last = self.delay.delay_ticks_from_last(half_period_ticks, last);
-                //cortex_m::asm::delay(10);
             }
         }
         self.pins.tck.set_low();
@@ -252,12 +250,10 @@ impl<'a> JTAG<'a> {
                 self.pins.tdi.set_bool(tdi & (1 << bit_idx) != 0);
                 self.pins.tck.set_low();
                 last = self.delay.delay_ticks_from_last(half_period_ticks, last);
-                //cortex_m::asm::delay(10);
                 self.pins.tck.set_high();
                 if self.pins.tdo.is_high() {
                     *tdo |= 1 << bit_idx;
                 }
-                //cortex_m::asm::delay(10);
                 last = self.delay.delay_ticks_from_last(half_period_ticks, last);
             }
         }
