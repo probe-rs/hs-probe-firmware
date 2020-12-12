@@ -510,23 +510,12 @@ impl<'a> DAP<'a> {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         let clock = req.next_u32();
 
-        match self.mode {
-            Some(DAPMode::SWD) => {
-                self.jtag.set_clock(clock);
-                let valid = self.swd.set_clock(clock);
-                if valid {
-                    resp.write_ok();
-                } else {
-                    resp.write_err();
-                }
-            }
-            Some(DAPMode::JTAG) => {
-                self.jtag.set_clock(clock);
-                resp.write_ok();
-            }
-            None => {
-                resp.write_err();
-            }
+        self.jtag.set_clock(clock);
+        let valid = self.swd.set_clock(clock);
+        if valid {
+            resp.write_ok();
+        } else {
+            resp.write_err();
         }
 
         Some(resp)
