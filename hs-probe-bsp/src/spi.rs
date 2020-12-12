@@ -66,7 +66,6 @@ impl SPI {
 
     /// Set up SPI peripheral for JTAG mode
     pub fn setup_jtag(&self) {
-        // SPI Mode 3 (CPOL=1 CPHA=1)
         write_reg!(
             spi,
             self.spi,
