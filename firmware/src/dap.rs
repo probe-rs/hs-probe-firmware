@@ -543,7 +543,7 @@ impl<'a> DAP<'a> {
 
         let payload = req.rest();
         let nbytes = (nbits + 7) / 8;
-        let seq = if nbytes < payload.len() {
+        let seq = if nbytes <= payload.len() {
             &payload[..nbytes]
         } else {
             resp.write_err();
