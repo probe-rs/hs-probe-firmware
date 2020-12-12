@@ -1,7 +1,6 @@
 use usb_device::class_prelude::*;
 use usb_device::Result;
 use usb_device::control::{RequestType, Recipient};
-use crate::app::Request;
 
 #[allow(unused)]
 mod request {

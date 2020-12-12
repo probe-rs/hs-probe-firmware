@@ -679,7 +679,7 @@ impl<'a> DAP<'a> {
         Some(resp)
     }
 
-    fn process_jtag_sequence(&mut self, mut req: Request) -> Option<ResponseWriter> {
+    fn process_jtag_sequence(&mut self, req: Request) -> Option<ResponseWriter> {
         match self.mode {
             Some(DAPMode::JTAG) => {}
             _ => {

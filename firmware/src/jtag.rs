@@ -1,7 +1,6 @@
 // Copyright 2020 Adam Greig
 // Dual licensed under the Apache 2.0 and MIT licenses.
 
-use stm32ral::{read_reg, write_reg, gpio};
 use crate::bsp::gpio::{Pin, Pins};
 use crate::bsp::delay::Delay;
 use crate::bsp::dma::DMA;
@@ -72,7 +71,6 @@ impl<'a> JTAG<'a> {
         let mut last = self.delay.get_current();
         last = self.delay.delay_ticks_from_last(half_period_ticks, last);
 
-        let mut last = self.delay.get_current();
         for byte in data {
             let mut byte = *byte;
             let frame_bits = core::cmp::min(bits, 8);
