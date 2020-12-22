@@ -62,6 +62,7 @@ fn main() -> ! {
         led_red: gpioc.pin(10),
         led_green: gpiob.pin(8),
         led_blue: gpioe.pin(0),
+        t5v_en: gpiob.pin(1),
         tvcc_en: gpioe.pin(2),
         reset: gpiog.pin(13),
         gnd_detect: gpiog.pin(14),

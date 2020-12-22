@@ -367,6 +367,7 @@ pub struct Pins<'a> {
     pub led_green: Pin<'a>,
     pub led_blue: Pin<'a>,
 
+    pub t5v_en: Pin<'a>,
     pub tvcc_en: Pin<'a>,
     pub reset: Pin<'a>,
     pub gnd_detect: Pin<'a>,
@@ -413,6 +414,13 @@ impl<'a> Pins<'a> {
         self.led_blue
             .set_high()
             .set_otype_opendrain()
+            .set_ospeed_low()
+            .set_mode_output();
+
+        // Push-pull output drives target 5V supply enable.
+        self.t5v_en
+            .set_low()
+            .set_otype_pushpull()
             .set_ospeed_low()
             .set_mode_output();
 
