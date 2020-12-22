@@ -12,9 +12,11 @@ pub struct App<'a> {
     rcc: &'a bsp::rcc::RCC,
     dma: &'a bsp::dma::DMA,
     pins: &'a bsp::gpio::Pins<'a>,
-    spi: &'a bsp::spi::SPI,
+    swd_spi: &'a bsp::spi::SPI,
+    jtag_spi: &'a bsp::spi::SPI,
     usb: &'a mut crate::usb::USB,
     dap: &'a mut crate::dap::DAP<'a>,
+    delay: &'a bsp::delay::Delay,
 }
 
 impl<'a> App<'a> {
@@ -22,17 +24,21 @@ impl<'a> App<'a> {
         rcc: &'a bsp::rcc::RCC,
         dma: &'a bsp::dma::DMA,
         pins: &'a bsp::gpio::Pins<'a>,
-        spi: &'a bsp::spi::SPI,
+        swd_spi: &'a bsp::spi::SPI,
+        jtag_spi: &'a bsp::spi::SPI,
         usb: &'a mut crate::usb::USB,
         dap: &'a mut crate::dap::DAP<'a>,
+        delay: &'a bsp::delay::Delay,
     ) -> Self {
         App {
             rcc,
             dma,
             pins,
-            spi,
+            swd_spi,
+            jtag_spi,
             usb,
             dap,
+            delay,
         }
     }
 
@@ -45,6 +51,8 @@ impl<'a> App<'a> {
         #[cfg(feature = "turbo")]
         let clocks = self.rcc.setup(CoreFrequency::F216MHz);
 
+        self.delay.set_sysclk(&clocks);
+
         // Configure DMA for SPI1, SPI2, USART1 and USART2 transfers
         self.dma.setup();
 
@@ -52,8 +60,11 @@ impl<'a> App<'a> {
         self.pins.setup();
         self.pins.high_impedance_mode();
 
-        self.spi.set_base_clock(&clocks);
-        self.spi.disable();
+        self.swd_spi.set_base_clock(&clocks);
+        self.swd_spi.disable();
+
+        self.jtag_spi.set_base_clock(&clocks);
+        self.jtag_spi.disable();
 
         // Configure USB peripheral and connect to host
         self.usb.setup(&clocks, serial);
@@ -93,7 +104,8 @@ impl<'a> App<'a> {
                 self.pins.high_impedance_mode();
                 self.pins.led_blue.set_high();
                 self.pins.tvcc_en.set_low();
-                self.spi.disable();
+                self.swd_spi.disable();
+                self.jtag_spi.disable();
             }
         }
     }

@@ -12,6 +12,7 @@ const GIT_VERSION: &str = git_version!();
 
 mod app;
 mod dap;
+mod jtag;
 mod swd;
 mod usb;
 
@@ -46,6 +47,7 @@ fn main() -> ! {
         stm32ral::dma::DMA2::take().unwrap(),
     );
     let spi1 = bsp::spi::SPI::new(stm32ral::spi::SPI1::take().unwrap());
+    let spi2 = bsp::spi::SPI::new(stm32ral::spi::SPI2::take().unwrap());
     let mut uart1 = bsp::uart::UART::new(stm32ral::usart::USART1::take().unwrap(), &dma);
 
     let gpioa = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOA::take().unwrap());
@@ -77,11 +79,15 @@ fn main() -> ! {
         usb_sel: gpiob.pin(10),
     };
 
+    let syst = stm32ral::syst::SYST::take().unwrap();
+    let delay = bsp::delay::Delay::new(syst);
+
     let swd = swd::SWD::new(&spi1, &pins);
-    let mut dap = dap::DAP::new(swd, &mut uart1, &pins);
+    let jtag = jtag::JTAG::new(&spi2, &dma, &pins, &delay);
+    let mut dap = dap::DAP::new(swd, jtag, &mut uart1, &pins);
 
     // Create App instance with the HAL instances
-    let mut app = app::App::new(&rcc, &dma, &pins, &spi1, &mut usb, &mut dap);
+    let mut app = app::App::new(&rcc, &dma, &pins, &spi1, &spi2, &mut usb, &mut dap, &delay);
 
     rprintln!("Starting...");
 

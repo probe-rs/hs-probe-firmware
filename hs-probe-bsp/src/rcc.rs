@@ -133,6 +133,7 @@ impl RCC {
             GPIODEN: Enabled,
             GPIOEEN: Enabled,
             GPIOGEN: Enabled,
+            GPIOIEN: Enabled,
             DMA1EN: Enabled,
             DMA2EN: Enabled
         );
