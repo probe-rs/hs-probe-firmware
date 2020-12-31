@@ -218,13 +218,12 @@ impl<'a> JTAG<'a> {
 
                 // Set TDI and toggle TCK.
                 self.pins.tdi.set_bool(byte & (1 << bit_idx) != 0);
-                self.pins.tck.set_low();
                 last = self.delay.delay_ticks_from_last(half_period_ticks, last);
                 self.pins.tck.set_high();
                 last = self.delay.delay_ticks_from_last(half_period_ticks, last);
+                self.pins.tck.set_low();
             }
         }
-        self.pins.tck.set_low();
     }
 
     /// Read-write JTAG transfer, with TDO capture.
@@ -244,18 +243,19 @@ impl<'a> JTAG<'a> {
                     return;
                 }
 
-                // Set TDI, read TDO, and toggle TCK.
+                // We set TDI half a period before the clock rising edge where it is sampled
+                // by the target, and we sample TDO immediately before the clock falling edge
+                // where it is updated by the target.
                 self.pins.tdi.set_bool(tdi & (1 << bit_idx) != 0);
-                self.pins.tck.set_low();
                 last = self.delay.delay_ticks_from_last(half_period_ticks, last);
                 self.pins.tck.set_high();
+                last = self.delay.delay_ticks_from_last(half_period_ticks, last);
                 if self.pins.tdo.is_high() {
                     *tdo |= 1 << bit_idx;
                 }
-                last = self.delay.delay_ticks_from_last(half_period_ticks, last);
+                self.pins.tck.set_low();
             }
         }
-        self.pins.tck.set_low();
     }
 
     /// Compute required number of bytes to store a number of bits.
