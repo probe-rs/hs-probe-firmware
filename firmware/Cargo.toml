@@ -12,7 +12,7 @@ panic-rtt-target = { version = "0.1.0", features = ["cortex-m"] }
 stm32ral = { version = "0.4.1", features = ["stm32f7x3", "rt"] }
 hs-probe-bsp = { path = "../hs-probe-bsp" }
 usb-device = { version = "0.2.5", features = ["control-buffer-256"] }
-usbd-serial = { path = "../usbd-serial", features = ["high-speed"] }
+usbd-serial = { version = "0.1.1", features = ["high-speed"] }
 stm32-device-signature = { version = "0.3.1", features = ["stm32f72x"] }
 num_enum = { version = "0.4.3", default-features = false }
 git-version = "0.3.4"
