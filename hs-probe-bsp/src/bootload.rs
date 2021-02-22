@@ -1,9 +1,7 @@
 // Copyright 2019 Adam Greig
 // Dual licensed under the Apache 2.0 and MIT licenses.
 
-#![allow(clippy::zero_ptr, clippy::unreadable_literal)]
-
-use stm32ral::{write_reg, modify_reg, syscfg, scb};
+use stm32ral::{modify_reg, scb};
 
 static mut FLAG: u32 = 0;
 const FLAG_VALUE: u32 = 0xB00110AD;
@@ -22,15 +20,7 @@ pub fn check() {
         // Otherwise, clear the flag and jump to system bootloader
         core::ptr::write_volatile(&mut FLAG, 0);
 
-        // Get new stack pointer and jump address
-        let addr = 0x0010_0000;
-        let sp = core::ptr::read_volatile(addr as *const u32);
-        let rv = core::ptr::read_volatile((addr+4) as *const u32);
-        let bootloader: extern "C" fn() -> ! = core::mem::transmute(rv);
-
-        // Write new stack pointer to MSP and call into system memory
-        cortex_m::register::msp::write(sp);
-        bootloader();
+        cortex_m::asm::bootload(0x0010_0000 as *const u32);
     }
 }
 
