@@ -6,7 +6,6 @@ for DAPv1 and DAPv2 over high-speed (480 MBit/s) USB 2.0.
 ## Building the firmware
 
 ```
-cd firmware
 cargo build --release
 ```
 
@@ -15,7 +14,6 @@ cargo build --release
 The HS-Probe supports `dfu-util` and can have its firmware loaded via it. To generate the bin, run:
 
 ```console
-cd firmware
 cargo objcopy --release -- -O binary firmware.bin
 ```
 
@@ -36,8 +34,7 @@ The following feature flags exists:
 
 To build with features, the following command is used:
 
-```
-cd firmware
+```console
 cargo build --release --features turbo,...,...
 ```
 
