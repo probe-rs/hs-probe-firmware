@@ -5,8 +5,7 @@
 
 use crate::{
     bsp::{gpio::Pins, uart::UART},
-    jtag,
-    swd,
+    jtag, swd,
 };
 use core::convert::{TryFrom, TryInto};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -253,7 +252,12 @@ pub struct DAP<'a> {
 }
 
 impl<'a> DAP<'a> {
-    pub fn new(swd: swd::SWD<'a>, jtag: jtag::JTAG<'a>, uart: &'a mut UART<'a>, pins: &'a Pins) -> Self {
+    pub fn new(
+        swd: swd::SWD<'a>,
+        jtag: jtag::JTAG<'a>,
+        uart: &'a mut UART<'a>,
+        pins: &'a Pins,
+    ) -> Self {
         DAP {
             swd,
             jtag,

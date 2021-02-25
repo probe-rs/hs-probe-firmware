@@ -1,6 +1,6 @@
 use usb_device::class_prelude::*;
+use usb_device::control::{Recipient, RequestType};
 use usb_device::Result;
-use usb_device::control::{RequestType, Recipient};
 
 #[allow(unused)]
 mod request {
@@ -74,7 +74,7 @@ impl<B: UsbBus> UsbClass<B> for DfuRuntime {
         match req.request {
             request::DFU_DETACH => {
                 hs_probe_bsp::bootload::bootload();
-            },
+            }
             _ => {
                 xfer.reject().ok();
             }

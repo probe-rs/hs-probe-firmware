@@ -1,5 +1,5 @@
-use stm32ral::{rcc, flash};
-use stm32ral::{read_reg, modify_reg, reset_reg};
+use stm32ral::{flash, rcc};
+use stm32ral::{modify_reg, read_reg, reset_reg};
 
 pub struct RCC {
     rcc: rcc::Instance,
@@ -25,7 +25,10 @@ impl RCC {
         while read_reg!(rcc, self.rcc, CFGR, SWS != HSI) {}
 
         // Disable everything
-        modify_reg!(rcc, self.rcc, CR,
+        modify_reg!(
+            rcc,
+            self.rcc,
+            CR,
             HSEON: Off,
             CSSON: Off,
             PLLON: Off,
@@ -63,11 +66,7 @@ impl RCC {
             }
         }
         // Set prescalers
-        modify_reg!(rcc, self.rcc, CFGR,
-            HPRE: Div1,
-            PPRE1: ppre1,
-            PPRE2: ppre2
-        );
+        modify_reg!(rcc, self.rcc, CFGR, HPRE: Div1, PPRE1: ppre1, PPRE2: ppre2);
 
         // Calculate PLL parameters and flash latency
         let pllm = 6;
@@ -101,7 +100,10 @@ impl RCC {
         }
 
         // Configure PLL from HSE
-        modify_reg!(rcc, self.rcc, PLLCFGR,
+        modify_reg!(
+            rcc,
+            self.rcc,
+            PLLCFGR,
             PLLSRC: HSE,
             PLLM: pllm,
             PLLN: plln,
@@ -126,7 +128,10 @@ impl RCC {
         modify_reg!(rcc, self.rcc, CFGR, PPRE1: Div1, PPRE2: Div1, HPRE: Div1);
 
         // Enable peripheral clocks
-        modify_reg!(rcc, self.rcc, AHB1ENR,
+        modify_reg!(
+            rcc,
+            self.rcc,
+            AHB1ENR,
             GPIOAEN: Enabled,
             GPIOBEN: Enabled,
             GPIOCEN: Enabled,
@@ -137,18 +142,10 @@ impl RCC {
             DMA1EN: Enabled,
             DMA2EN: Enabled
         );
-        modify_reg!(rcc, self.rcc, APB1ENR,
-            SPI2EN: Enabled,
-            USART2EN: Enabled
-        );
-        modify_reg!(rcc, self.rcc, APB2ENR,
-            SPI1EN: Enabled,
-            USART1EN: Enabled
-        );
+        modify_reg!(rcc, self.rcc, APB1ENR, SPI2EN: Enabled, USART2EN: Enabled);
+        modify_reg!(rcc, self.rcc, APB2ENR, SPI1EN: Enabled, USART1EN: Enabled);
 
-        Clocks {
-            sysclk
-        }
+        Clocks { sysclk }
     }
 }
 

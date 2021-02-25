@@ -1,5 +1,5 @@
 use stm32ral::gpio;
-use stm32ral::{read_reg, write_reg, modify_reg};
+use stm32ral::{modify_reg, read_reg, write_reg};
 
 pub struct GPIO {
     p: gpio::Instance,
@@ -439,20 +439,13 @@ impl<'a> Pins<'a> {
             .set_mode_output();
 
         // Input for GNDDetect
-        self.gnd_detect
-            .set_pull_up()
-            .set_mode_input();
+        self.gnd_detect.set_pull_up().set_mode_input();
 
         // Used for SWO in SWD mode. Starts high-impedance.
-        self.usart1_rx
-            .set_af(7)
-            .set_mode_input();
+        self.usart1_rx.set_af(7).set_mode_input();
 
         // VCP pins
-        self.usart2_rx
-            .set_af(7)
-            .set_pull_up()
-            .set_mode_alternate();
+        self.usart2_rx.set_af(7).set_pull_up().set_mode_alternate();
         self.usart2_tx
             .set_high()
             .set_ospeed_high()
@@ -467,9 +460,7 @@ impl<'a> Pins<'a> {
             .set_mode_input();
 
         // Input to SPI1_MISO
-        self.spi1_miso
-            .set_af(5)
-            .set_mode_input();
+        self.spi1_miso.set_af(5).set_mode_input();
 
         // Push-pull output to SPI1_MOSI. Starts high-impedance.
         self.spi1_mosi
@@ -486,9 +477,7 @@ impl<'a> Pins<'a> {
             .set_mode_input();
 
         // Input to SPI2_MISO
-        self.spi2_miso
-            .set_af(5)
-            .set_mode_input();
+        self.spi2_miso.set_af(5).set_mode_input();
 
         // Push-pull output to SPI2_MOSI. Starts high-impedance.
         self.spi2_mosi
