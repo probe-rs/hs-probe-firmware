@@ -3,7 +3,7 @@
 
 use core::cmp::Ordering;
 use stm32ral::usart;
-use stm32ral::{write_reg, modify_reg, read_reg};
+use stm32ral::{modify_reg, read_reg, write_reg};
 
 use super::dma::DMA;
 
@@ -16,7 +16,12 @@ pub struct UART<'a> {
 
 impl<'a> UART<'a> {
     pub fn new(uart: usart::Instance, dma: &'a DMA) -> Self {
-        UART { uart, dma, buffer: [0; 256], last_idx: 0 }
+        UART {
+            uart,
+            dma,
+            buffer: [0; 256],
+            last_idx: 0,
+        }
     }
 
     /// Begin UART reception into buffer.
@@ -25,7 +30,14 @@ impl<'a> UART<'a> {
     pub fn start(&mut self) {
         self.last_idx = 0;
         write_reg!(usart, self.uart, CR3, DMAR: Enabled);
-        write_reg!(usart, self.uart, CR1, OVER8: Oversampling8, RE: Enabled, UE: Enabled);
+        write_reg!(
+            usart,
+            self.uart,
+            CR1,
+            OVER8: Oversampling8,
+            RE: Enabled,
+            UE: Enabled
+        );
         self.dma.usart1_start(&mut self.buffer);
     }
 
@@ -92,7 +104,7 @@ impl<'a> UART<'a> {
             Ordering::Equal => {
                 // No action required if no data has been received.
                 None
-            },
+            }
             Ordering::Less => {
                 // Wraparound occurred:
                 // Copy from last_idx to end, and from start to new dma_idx.
@@ -110,12 +122,12 @@ impl<'a> UART<'a> {
                     new_last_idx = n2;
                 }
 
-                rx[..n1].copy_from_slice(&self.buffer[self.last_idx..self.last_idx+n1]);
-                rx[n1..(n1+n2)].copy_from_slice(&self.buffer[..n2]);
+                rx[..n1].copy_from_slice(&self.buffer[self.last_idx..self.last_idx + n1]);
+                rx[n1..(n1 + n2)].copy_from_slice(&self.buffer[..n2]);
 
                 self.last_idx = new_last_idx;
-                Some(&rx[..(n1+n2)])
-            },
+                Some(&rx[..(n1 + n2)])
+            }
             Ordering::Greater => {
                 // New data, no wraparound:
                 // Copy from last_idx to new dma_idx.
@@ -126,11 +138,11 @@ impl<'a> UART<'a> {
                     n = rx.len();
                 }
 
-                rx[..n].copy_from_slice(&self.buffer[self.last_idx..self.last_idx+n]);
+                rx[..n].copy_from_slice(&self.buffer[self.last_idx..self.last_idx + n]);
 
                 self.last_idx += n;
                 Some(&rx[..n])
-            },
+            }
         }
     }
 }

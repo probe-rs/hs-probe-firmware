@@ -1,8 +1,7 @@
-use stm32ral::syst;
-use stm32ral::{read_reg, write_reg, modify_reg};
-use core::sync::atomic::{AtomicU32, Ordering};
 use crate::rcc::Clocks;
-
+use core::sync::atomic::{AtomicU32, Ordering};
+use stm32ral::syst;
+use stm32ral::{modify_reg, read_reg, write_reg};
 
 const SYST_CSR_ENABLE: u32 = 1 << 0;
 const SYST_CSR_TICKINT: u32 = 1 << 1;
@@ -60,7 +59,7 @@ impl Delay {
             let delta = last.wrapping_sub(now) & 0xffffff;
 
             if delta >= ticks {
-                break
+                break;
             } else {
                 ticks -= delta;
                 last = now;
@@ -74,7 +73,7 @@ impl Delay {
             let delta = last.wrapping_sub(now) & 0xffffff;
 
             if delta >= ticks {
-                break now
+                break now;
             } else {
                 ticks -= delta;
                 last = now;

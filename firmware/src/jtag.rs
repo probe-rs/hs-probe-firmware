@@ -1,11 +1,11 @@
 // Copyright 2020 Adam Greig
 // Dual licensed under the Apache 2.0 and MIT licenses.
 
-use crate::bsp::gpio::{Pin, Pins};
 use crate::bsp::delay::Delay;
 use crate::bsp::dma::DMA;
+use crate::bsp::gpio::{Pin, Pins};
 use crate::bsp::spi::SPI;
-use core::sync::atomic::{AtomicU32, AtomicBool, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 struct JTAGPins<'a> {
     tms: &'a Pin<'a>,
@@ -107,10 +107,11 @@ impl<'a> JTAG<'a> {
     /// with capture enabled.
     ///
     /// Returns the number of bytes of rxbuf which were written to.
-    pub fn sequences(&self, data: &[u8], rxbuf: &mut [u8]) -> usize
-    {
+    pub fn sequences(&self, data: &[u8], rxbuf: &mut [u8]) -> usize {
         // Read request header containing number of sequences.
-        if data.len() == 0 { return 0 };
+        if data.len() == 0 {
+            return 0;
+        };
         let mut nseqs = data[0];
         let mut data = &data[1..];
         let mut rxidx = 0;
@@ -131,7 +132,9 @@ impl<'a> JTAG<'a> {
             let transfer_type = data[0] & 0b1100_0000;
             while nseqs > 0 {
                 // Read header byte for this sequence.
-                if data.len() == 0 { break };
+                if data.len() == 0 {
+                    break;
+                };
                 let header = data[0];
                 if (header & 0b1100_0000) != transfer_type {
                     // This sequence can't be processed in the same way
@@ -145,23 +148,26 @@ impl<'a> JTAG<'a> {
                 let nbits = if nbits == 0 { 64 } else { nbits as usize };
                 let nbytes = Self::bytes_for_bits(nbits);
 
-                if data.len() < (nbytes + 1) { break };
+                if data.len() < (nbytes + 1) {
+                    break;
+                };
                 data = &data[1..];
 
-                buffer[buffer_idx..buffer_idx+nbytes].copy_from_slice(&data[..nbytes]);
+                buffer[buffer_idx..buffer_idx + nbytes].copy_from_slice(&data[..nbytes]);
                 buffer_idx += nbytes;
                 nseqs -= 1;
                 data = &data[nbytes..];
             }
             if buffer_idx > 0 {
                 let capture = transfer_type & 0b1000_0000;
-                let tms     = transfer_type & 0b0100_0000;
+                let tms = transfer_type & 0b0100_0000;
 
                 // Set TMS for this transfer.
                 self.pins.tms.set_bool(tms != 0);
 
                 self.spi_mode();
-                self.spi.jtag_exchange(&self.dma, &buffer[..buffer_idx], &mut rxbuf[rxidx..]);
+                self.spi
+                    .jtag_exchange(&self.dma, &buffer[..buffer_idx], &mut rxbuf[rxidx..]);
                 if capture != 0 {
                     rxidx += buffer_idx;
                 }
@@ -172,15 +178,19 @@ impl<'a> JTAG<'a> {
         // Process each sequence.
         for _ in 0..nseqs {
             // Read header byte for this sequence.
-            if data.len() == 0 { break };
+            if data.len() == 0 {
+                break;
+            };
             let header = data[0];
             data = &data[1..];
             let capture = header & 0b1000_0000;
-            let tms     = header & 0b0100_0000;
-            let nbits   = header & 0b0011_1111;
+            let tms = header & 0b0100_0000;
+            let nbits = header & 0b0011_1111;
             let nbits = if nbits == 0 { 64 } else { nbits as usize };
             let nbytes = Self::bytes_for_bits(nbits);
-            if data.len() < nbytes { break };
+            if data.len() < nbytes {
+                break;
+            };
 
             // Split data into TDI data for this sequence and data for remaining sequences.
             let tdi = &data[..nbytes];
@@ -212,7 +222,7 @@ impl<'a> JTAG<'a> {
         for (byte_idx, byte) in tdi.iter().enumerate() {
             for bit_idx in 0..8 {
                 // Stop after transmitting `n` bits.
-                if byte_idx*8 + bit_idx == n {
+                if byte_idx * 8 + bit_idx == n {
                     return;
                 }
 
@@ -239,7 +249,7 @@ impl<'a> JTAG<'a> {
             *tdo = 0;
             for bit_idx in 0..8 {
                 // Stop after transmitting `n` bits.
-                if byte_idx*8 + bit_idx == n {
+                if byte_idx * 8 + bit_idx == n {
                     return;
                 }
 

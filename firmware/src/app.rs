@@ -1,6 +1,6 @@
+use crate::dap::DAPVersion;
 use hs_probe_bsp as bsp;
 use hs_probe_bsp::rcc::CoreFrequency;
-use crate::dap::DAPVersion;
 
 pub enum Request {
     Suspend,

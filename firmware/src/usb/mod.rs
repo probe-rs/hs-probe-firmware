@@ -1,26 +1,20 @@
-use stm32ral::{
-    usbphyc,
-    otg_hs_global,
-    otg_hs_device,
-    otg_hs_pwrclk
-};
 use crate::app::Request;
+use hs_probe_bsp::otg_hs::{UsbBus, UsbBusType};
 use hs_probe_bsp::rcc::Clocks;
-use hs_probe_bsp::otg_hs::{UsbBusType, UsbBus};
-use usb_device::prelude::*;
+use stm32ral::{otg_hs_device, otg_hs_global, otg_hs_pwrclk, usbphyc};
 use usb_device::bus::UsbBusAllocator;
+use usb_device::prelude::*;
 use usbd_serial::SerialPort;
 
-mod winusb;
 mod dap_v1;
 mod dap_v2;
 mod dfu;
+mod winusb;
 
-use winusb::MicrosoftDescriptors;
 use dap_v1::CmsisDapV1;
 use dap_v2::CmsisDapV2;
 use dfu::DfuRuntime;
-
+use winusb::MicrosoftDescriptors;
 
 struct UninitializedUSB {
     phy: usbphyc::Instance,
@@ -83,10 +77,10 @@ impl USB {
             phy,
             global,
             device,
-            pwrclk
+            pwrclk,
         };
         USB {
-            state: State::Uninitialized(usb)
+            state: State::Uninitialized(usb),
         }
     }
 
@@ -100,7 +94,7 @@ impl USB {
                     usb_global: usb.global,
                     usb_device: usb.device,
                     usb_pwrclk: usb.pwrclk,
-                    hclk: clocks.hclk()
+                    hclk: clocks.hclk(),
                 };
 
                 let usb_bus = UsbBus::new(usb, &mut EP_MEMORY);
@@ -152,7 +146,11 @@ impl USB {
     pub fn interrupt(&mut self) -> Option<Request> {
         let usb = self.state.as_initialized_mut();
         if usb.device.poll(&mut [
-            &mut usb.winusb, &mut usb.dap_v1, &mut usb.dap_v2, &mut usb.serial, &mut usb.dfu
+            &mut usb.winusb,
+            &mut usb.dap_v1,
+            &mut usb.dap_v2,
+            &mut usb.serial,
+            &mut usb.dfu,
         ]) {
             let old_state = usb.device_state;
             let new_state = usb.device.state();
@@ -181,13 +179,17 @@ impl USB {
     /// Transmit a DAP report back over the DAPv1 HID interface
     pub fn dap1_reply(&mut self, data: &[u8]) {
         let usb = self.state.as_initialized_mut();
-        usb.dap_v1.write_packet(data).expect("DAPv1 EP write failed");
+        usb.dap_v1
+            .write_packet(data)
+            .expect("DAPv1 EP write failed");
     }
 
     /// Transmit a DAP report back over the DAPv2 bulk interface
     pub fn dap2_reply(&mut self, data: &[u8]) {
         let usb = self.state.as_initialized_mut();
-        usb.dap_v2.write_packet(data).expect("DAPv2 EP write failed");
+        usb.dap_v2
+            .write_packet(data)
+            .expect("DAPv2 EP write failed");
     }
 
     /// Check if SWO endpoint is currently busy transmitting data

@@ -1,10 +1,7 @@
 // Copyright 2019-2020 Adam Greig
 // Dual licensed under the Apache 2.0 and MIT licenses.
 
-use crate::bsp::{
-    gpio::Pins,
-    spi::SPI,
-};
+use crate::bsp::{gpio::Pins, spi::SPI};
 use num_enum::IntoPrimitive;
 
 #[derive(Copy, Clone, Debug)]

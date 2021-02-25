@@ -30,7 +30,10 @@ pub enum SPIPrescaler {
 
 impl SPI {
     pub fn new(spi: spi::Instance) -> Self {
-        SPI { spi, base_clock: AtomicU32::new(0) }
+        SPI {
+            spi,
+            base_clock: AtomicU32::new(0),
+        }
     }
 
     pub fn set_base_clock(&self, clocks: &Clocks) {
@@ -96,7 +99,7 @@ impl SPI {
     pub fn calculate_prescaler(&self, max_frequency: u32) -> Option<SPIPrescaler> {
         let base_clock = self.base_clock.load(Ordering::SeqCst);
         if base_clock == 0 {
-            return None
+            return None;
         }
 
         if (base_clock / 2) <= max_frequency {

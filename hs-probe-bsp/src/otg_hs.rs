@@ -1,9 +1,9 @@
 //! USB OTG high-speed peripheral
 
-use stm32ral::{write_reg, modify_reg, read_reg};
-use stm32ral::{otg_hs_global, otg_hs_device, otg_hs_pwrclk, usbphyc, rcc};
-use synopsys_usb_otg::{UsbPeripheral, PhyType};
+use stm32ral::{modify_reg, read_reg, write_reg};
+use stm32ral::{otg_hs_device, otg_hs_global, otg_hs_pwrclk, rcc, usbphyc};
 pub use synopsys_usb_otg::UsbBus;
+use synopsys_usb_otg::{PhyType, UsbPeripheral};
 
 pub struct USB {
     pub usb_phy: usbphyc::Instance,

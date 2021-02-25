@@ -93,9 +93,7 @@ fn main() -> ! {
     rprintln!("Starting...");
 
     // Initialise application, including system peripherals
-    unsafe {
-        app.setup(device_id_hex())
-    };
+    unsafe { app.setup(device_id_hex()) };
 
     loop {
         // Process events
