@@ -106,39 +106,8 @@ impl<'a> SWD<'a> {
         self.wait_retries = wait_retries;
     }
 
-    fn line_reset(&self) {
-        for _ in 0..7 {
-            self.spi.tx8(0xFF);
-        }
-    }
-
-    fn jtag_to_swd(&self) {
-        self.spi.tx16(0xE79E);
-    }
-
-    pub fn tx_sequence(&self, sequence: &[u8]) {
-        self.pins.swd_tx();
-        for byte in sequence {
-            self.spi.tx8(*byte);
-        }
-        self.spi.wait_busy();
-    }
-
-    pub fn idle_high(&self) {
-        self.spi.tx4(0xF);
-    }
-
     pub fn idle_low(&self) {
         self.spi.tx4(0x0);
-    }
-
-    pub fn start(&self) {
-        self.pins.swd_tx();
-        self.line_reset();
-        self.jtag_to_swd();
-        self.line_reset();
-        self.spi.tx8(0x00);
-        self.spi.wait_busy();
     }
 
     pub fn read_dp(&self, a: u8) -> Result<u32> {
@@ -151,10 +120,6 @@ impl<'a> SWD<'a> {
 
     pub fn read_ap(&self, a: u8) -> Result<u32> {
         self.read(APnDP::AP, a)
-    }
-
-    pub fn write_ap(&self, a: u8, data: u32) -> Result<()> {
-        self.write(APnDP::AP, a, data)
     }
 
     pub fn read(&self, apndp: APnDP, a: u8) -> Result<u32> {
