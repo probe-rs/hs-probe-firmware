@@ -4,9 +4,7 @@ use stm32ral::syst;
 use stm32ral::{modify_reg, read_reg, write_reg};
 
 const SYST_CSR_ENABLE: u32 = 1 << 0;
-const SYST_CSR_TICKINT: u32 = 1 << 1;
 const SYST_CSR_CLKSOURCE: u32 = 1 << 2;
-const SYST_CSR_COUNTFLAG: u32 = 1 << 16;
 
 pub struct Delay {
     systick: syst::Instance,

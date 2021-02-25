@@ -50,7 +50,7 @@ fn main() -> ! {
     let spi2 = bsp::spi::SPI::new(stm32ral::spi::SPI2::take().unwrap());
     let mut uart1 = bsp::uart::UART::new(stm32ral::usart::USART1::take().unwrap(), &dma);
 
-    let gpioa = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOA::take().unwrap());
+    let _gpioa = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOA::take().unwrap());
     let gpiob = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOB::take().unwrap());
     let gpioc = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOC::take().unwrap());
     let gpiod = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOD::take().unwrap());
