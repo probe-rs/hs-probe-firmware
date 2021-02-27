@@ -134,15 +134,13 @@ struct Request<'a> {
 }
 
 impl<'a> Request<'a> {
+    /// Returns None if the report is empty
     pub fn from_report(report: &'a [u8]) -> Option<Self> {
-        if report.is_empty() {
-            return None;
-        }
-        let command = Command::try_from(report[0]).ok()?;
-        Some(Request {
-            command,
-            data: &report[1..],
-        })
+        let (command, data) = report.split_first()?;
+
+        let command = (*command).try_into().unwrap_or(Command::Unimplemented);
+
+        Some(Request { command, data })
     }
 
     pub fn next_u8(&mut self) -> u8 {
