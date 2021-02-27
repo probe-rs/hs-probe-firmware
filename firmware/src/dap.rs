@@ -365,7 +365,7 @@ impl<'a> DAP<'a> {
                     }
                 }
             }
-            _ => return None,
+            _ => resp.write_u8(0),
         }
         Some(resp)
     }
