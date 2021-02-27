@@ -16,7 +16,7 @@ pub enum DAPVersion {
     V2,
 }
 
-#[derive(Copy, Clone, TryFromPrimitive)]
+#[derive(Copy, Clone, TryFromPrimitive, PartialEq)]
 #[allow(non_camel_case_types)]
 #[repr(u8)]
 enum Command {
@@ -281,6 +281,12 @@ impl<'a> DAP<'a> {
     /// Returns Some(response) if a response should be transmitted.
     pub fn process_command(&mut self, report: &[u8], version: DAPVersion) -> Option<&[u8]> {
         let req = Request::from_report(report)?;
+
+        if req.command == Command::DAP_TransferAbort {
+            self.process_transfer_abort();
+            return None;
+        }
+
         match req.command {
             Command::DAP_Info => self.process_info(req, version),
             Command::DAP_HostStatus => self.process_host_status(req),
@@ -304,7 +310,7 @@ impl<'a> DAP<'a> {
             Command::DAP_TransferConfigure => self.process_transfer_configure(req),
             Command::DAP_Transfer => self.process_transfer(req),
             Command::DAP_TransferBlock => self.process_transfer_block(req),
-            Command::DAP_TransferAbort => self.process_transfer_abort(req),
+            Command::DAP_TransferAbort => unreachable!(),
             Command::Unimplemented => {
                 Some(ResponseWriter::new(Command::Unimplemented, &mut self.rbuf))
             }
@@ -908,11 +914,10 @@ impl<'a> DAP<'a> {
         Some(resp)
     }
 
-    fn process_transfer_abort(&mut self, _req: Request) -> Option<ResponseWriter> {
+    fn process_transfer_abort(&mut self) {
         // We'll only ever receive an abort request when we're not already
         // processing anything else, since processing blocks checking for
         // new requests. Therefore there's nothing to do here.
-        None
     }
 }
 
