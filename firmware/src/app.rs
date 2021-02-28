@@ -94,9 +94,11 @@ impl<'a> App<'a> {
     fn process_request(&mut self, req: Request) {
         match req {
             Request::DAP1Command((report, n)) => {
-                let len =
-                    self.dap
-                        .process_command(&report[..n], &mut self.resp_buf, DAPVersion::V1);
+                let len = self.dap.process_command(
+                    &report[..n],
+                    &mut self.resp_buf[..64],
+                    DAPVersion::V1,
+                );
 
                 if len > 0 {
                     self.usb.dap1_reply(&self.resp_buf[..len]);
