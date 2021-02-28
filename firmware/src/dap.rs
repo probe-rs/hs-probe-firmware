@@ -232,6 +232,10 @@ impl<'a> ResponseWriter<'a> {
         self.buf[idx]
     }
 
+    pub fn remaining(&mut self) -> &mut [u8] {
+        &mut self.buf[self.idx..]
+    }
+
     pub fn skip(&mut self, n: usize) {
         self.idx += n;
     }
@@ -697,25 +701,20 @@ impl<'a> DAP<'a> {
     }
 
     fn process_jtag_sequence(&mut self, req: Request) -> ResponseWriter {
+        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+
         match self.mode {
             Some(DAPMode::JTAG) => {}
             _ => {
-                let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
                 resp.write_err();
                 return resp;
             }
         }
 
-        // Extract command for later use
-        let command = req.command;
+        resp.write_ok();
 
         // Run requested JTAG sequences. Cannot fail.
-        // Returned data is written into rbuf before it's turned into a Response.
-        let size = self.jtag.sequences(req.rest(), &mut self.rbuf[2..]);
-
-        // Create a response wrapping the new data.
-        let mut resp = ResponseWriter::new(command, &mut self.rbuf);
-        resp.write_ok();
+        let size = self.jtag.sequences(req.rest(), resp.remaining());
         resp.skip(size);
 
         resp
