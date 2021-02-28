@@ -287,7 +287,7 @@ impl<'a> DAP<'a> {
             return None;
         }
 
-        match req.command {
+        let resp = match req.command {
             Command::DAP_Info => self.process_info(req, version),
             Command::DAP_HostStatus => self.process_host_status(req),
             Command::DAP_Connect => self.process_connect(req),
@@ -311,11 +311,10 @@ impl<'a> DAP<'a> {
             Command::DAP_Transfer => self.process_transfer(req),
             Command::DAP_TransferBlock => self.process_transfer_block(req),
             Command::DAP_TransferAbort => unreachable!(),
-            Command::Unimplemented => {
-                Some(ResponseWriter::new(Command::Unimplemented, &mut self.rbuf))
-            }
-        }
-        .map(|resp| resp.finished())
+            Command::Unimplemented => ResponseWriter::new(Command::Unimplemented, &mut self.rbuf),
+        };
+
+        Some(resp.finished())
     }
 
     /// Returns true if SWO streaming is currently active.
@@ -329,7 +328,7 @@ impl<'a> DAP<'a> {
         self.uart.read(&mut self.rbuf)
     }
 
-    fn process_info(&mut self, mut req: Request, version: DAPVersion) -> Option<ResponseWriter> {
+    fn process_info(&mut self, mut req: Request, version: DAPVersion) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         match DAPInfoID::try_from(req.next_u8()) {
             // Return 0-length string for VendorID, ProductID, SerialNumber
@@ -381,10 +380,10 @@ impl<'a> DAP<'a> {
             }
             _ => resp.write_u8(0),
         }
-        Some(resp)
+        resp
     }
 
-    fn process_host_status(&mut self, mut req: Request) -> Option<ResponseWriter> {
+    fn process_host_status(&mut self, mut req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         let status_type = req.next_u8();
         let status_status = req.next_u8();
@@ -403,10 +402,10 @@ impl<'a> DAP<'a> {
             }
         }
         resp.write_u8(0);
-        Some(resp)
+        resp
     }
 
-    fn process_connect(&mut self, mut req: Request) -> Option<ResponseWriter> {
+    fn process_connect(&mut self, mut req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         let port = req.next_u8();
         match ConnectPort::try_from(port) {
@@ -426,24 +425,24 @@ impl<'a> DAP<'a> {
                 resp.write_u8(ConnectPortResponse::Failed as u8);
             }
         }
-        Some(resp)
+        resp
     }
 
-    fn process_disconnect(&mut self, req: Request) -> Option<ResponseWriter> {
+    fn process_disconnect(&mut self, req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         self.pins.high_impedance_mode();
         self.mode = None;
         self.swd.spi_disable();
         self.jtag.spi_disable();
         resp.write_ok();
-        Some(resp)
+        resp
     }
 
-    fn process_write_abort(&mut self, mut req: Request) -> Option<ResponseWriter> {
+    fn process_write_abort(&mut self, mut req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         if self.mode.is_none() {
             resp.write_err();
-            return Some(resp);
+            return resp;
         }
         let _idx = req.next_u8();
         let word = req.next_u32();
@@ -451,26 +450,26 @@ impl<'a> DAP<'a> {
             Ok(_) => resp.write_ok(),
             Err(_) => resp.write_err(),
         }
-        Some(resp)
+        resp
     }
 
-    fn process_delay(&mut self, mut req: Request) -> Option<ResponseWriter> {
+    fn process_delay(&mut self, mut req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         let delay = req.next_u16() as u32;
         cortex_m::asm::delay(48 * delay);
         resp.write_ok();
-        Some(resp)
+        resp
     }
 
-    fn process_reset_target(&mut self, req: Request) -> Option<ResponseWriter> {
+    fn process_reset_target(&mut self, req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         resp.write_ok();
         // "No device specific reset sequence is implemented"
         resp.write_u8(0);
-        Some(resp)
+        resp
     }
 
-    fn process_swj_pins(&mut self, mut req: Request) -> Option<ResponseWriter> {
+    fn process_swj_pins(&mut self, mut req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         let output = req.next_u8();
         let mask = req.next_u8();
@@ -521,10 +520,10 @@ impl<'a> DAP<'a> {
             | (1 << NTRST_POS)
             | ((self.pins.reset.get_state() as u8) << NRESET_POS);
         resp.write_u8(state);
-        Some(resp)
+        resp
     }
 
-    fn process_swj_clock(&mut self, mut req: Request) -> Option<ResponseWriter> {
+    fn process_swj_clock(&mut self, mut req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         let clock = req.next_u32();
 
@@ -536,10 +535,10 @@ impl<'a> DAP<'a> {
             resp.write_err();
         }
 
-        Some(resp)
+        resp
     }
 
-    fn process_swj_sequence(&mut self, mut req: Request) -> Option<ResponseWriter> {
+    fn process_swj_sequence(&mut self, mut req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         let nbits: usize = match req.next_u8() {
             // CMSIS-DAP says 0 means 256 bits
@@ -554,7 +553,7 @@ impl<'a> DAP<'a> {
             &payload[..nbytes]
         } else {
             resp.write_err();
-            return Some(resp);
+            return resp;
         };
 
         match self.mode {
@@ -568,15 +567,15 @@ impl<'a> DAP<'a> {
             }
             None => {
                 resp.write_err();
-                return Some(resp);
+                return resp;
             }
         }
 
         resp.write_ok();
-        Some(resp)
+        resp
     }
 
-    fn process_swd_configure(&mut self, mut req: Request) -> Option<ResponseWriter> {
+    fn process_swd_configure(&mut self, mut req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         let config = req.next_u8();
         let clk_period = config & 0b011;
@@ -586,10 +585,10 @@ impl<'a> DAP<'a> {
         } else {
             resp.write_err();
         }
-        Some(resp)
+        resp
     }
 
-    fn process_swo_transport(&mut self, mut req: Request) -> Option<ResponseWriter> {
+    fn process_swo_transport(&mut self, mut req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         let transport = req.next_u8();
         match SWOTransport::try_from(transport) {
@@ -607,10 +606,10 @@ impl<'a> DAP<'a> {
             }
             _ => resp.write_err(),
         }
-        Some(resp)
+        resp
     }
 
-    fn process_swo_mode(&mut self, mut req: Request) -> Option<ResponseWriter> {
+    fn process_swo_mode(&mut self, mut req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         let mode = req.next_u8();
         match SWOMode::try_from(mode) {
@@ -622,18 +621,18 @@ impl<'a> DAP<'a> {
             }
             _ => resp.write_err(),
         }
-        Some(resp)
+        resp
     }
 
-    fn process_swo_baudrate(&mut self, mut req: Request) -> Option<ResponseWriter> {
+    fn process_swo_baudrate(&mut self, mut req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         let target = req.next_u32();
         let actual = self.uart.set_baud(target);
         resp.write_u32(actual);
-        Some(resp)
+        resp
     }
 
-    fn process_swo_control(&mut self, mut req: Request) -> Option<ResponseWriter> {
+    fn process_swo_control(&mut self, mut req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         match SWOControl::try_from(req.next_u8()) {
             Ok(SWOControl::Stop) => {
@@ -646,10 +645,10 @@ impl<'a> DAP<'a> {
             }
             _ => resp.write_err(),
         }
-        Some(resp)
+        resp
     }
 
-    fn process_swo_status(&mut self, req: Request) -> Option<ResponseWriter> {
+    fn process_swo_status(&mut self, req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         // Trace status:
         // Bit 0: trace capture active
@@ -658,10 +657,10 @@ impl<'a> DAP<'a> {
         resp.write_u8(self.uart.is_active() as u8);
         // Trace count: remaining bytes in buffer
         resp.write_u32(self.uart.bytes_available() as u32);
-        Some(resp)
+        resp
     }
 
-    fn process_swo_extended_status(&mut self, req: Request) -> Option<ResponseWriter> {
+    fn process_swo_extended_status(&mut self, req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         // Trace status:
         // Bit 0: trace capture active
@@ -674,10 +673,10 @@ impl<'a> DAP<'a> {
         resp.write_u32(0);
         // TD_TimeStamp: test domain timer value for trace sequence
         resp.write_u32(0);
-        Some(resp)
+        resp
     }
 
-    fn process_swo_data(&mut self, mut req: Request) -> Option<ResponseWriter> {
+    fn process_swo_data(&mut self, mut req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         // Limit maximum requested bytes to our maximum return size
         let n = usize::min(req.next_u16() as usize, 60);
@@ -694,16 +693,16 @@ impl<'a> DAP<'a> {
                 resp.write_slice(data);
             }
         }
-        Some(resp)
+        resp
     }
 
-    fn process_jtag_sequence(&mut self, req: Request) -> Option<ResponseWriter> {
+    fn process_jtag_sequence(&mut self, req: Request) -> ResponseWriter {
         match self.mode {
             Some(DAPMode::JTAG) => {}
             _ => {
                 let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
                 resp.write_err();
-                return Some(resp);
+                return resp;
             }
         }
 
@@ -719,10 +718,10 @@ impl<'a> DAP<'a> {
         resp.write_ok();
         resp.skip(size);
 
-        Some(resp)
+        resp
     }
 
-    fn process_transfer_configure(&mut self, mut req: Request) -> Option<ResponseWriter> {
+    fn process_transfer_configure(&mut self, mut req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
 
         // We don't support variable idle cycles
@@ -735,10 +734,10 @@ impl<'a> DAP<'a> {
         self.match_retries = req.next_u16() as usize;
 
         resp.write_ok();
-        Some(resp)
+        resp
     }
 
-    fn process_transfer(&mut self, mut req: Request) -> Option<ResponseWriter> {
+    fn process_transfer(&mut self, mut req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         let _idx = req.next_u8();
         let ntransfers = req.next_u8();
@@ -836,11 +835,11 @@ impl<'a> DAP<'a> {
             }
         }
 
-        Some(resp)
+        resp
     }
 
     #[allow(clippy::collapsible_if)]
-    fn process_transfer_block(&mut self, mut req: Request) -> Option<ResponseWriter> {
+    fn process_transfer_block(&mut self, mut req: Request) -> ResponseWriter {
         let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
         let _idx = req.next_u8();
         let ntransfers = req.next_u16();
@@ -864,7 +863,7 @@ impl<'a> DAP<'a> {
             if self.swd.read_ap(a).check(resp.mut_at(3)).is_none() {
                 // Quit early on error
                 resp.write_u16_at(1, 1);
-                return Some(resp);
+                return resp;
             }
         }
 
@@ -911,7 +910,7 @@ impl<'a> DAP<'a> {
         resp.write_u16_at(1, transfers + 1);
 
         // Return our response data
-        Some(resp)
+        resp
     }
 
     fn process_transfer_abort(&mut self) {
