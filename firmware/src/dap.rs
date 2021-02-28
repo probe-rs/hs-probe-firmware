@@ -650,17 +650,26 @@ impl<'a> DAP<'a> {
     }
 
     fn process_swo_data(&mut self, mut req: Request, resp: &mut ResponseWriter) {
-        // Limit maximum requested bytes to our maximum return size
-        let n = usize::min(req.next_u16() as usize, 60);
         // Write status byte to response
         resp.write_u8(self.uart.is_active() as u8);
+
+        // Skip length for now
+        resp.skip(2);
+
+        let mut buf = resp.remaining();
+
+        // Limit maximum return size to maximum requested bytes
+        let n = req.next_u16() as usize;
+        if buf.len() > n {
+            buf = &mut buf[..n];
+        }
+
         // Read data from UART
-        let mut buf = [0u8; 60];
-        let len = self.uart.read(&mut buf[..n]);
+        let len = self.uart.read(&mut buf);
+        resp.skip(len);
 
-        resp.write_u16(len as u16);
-
-        resp.write_slice(&buf[0..len]);
+        // Go back and write length
+        resp.write_u16_at(2, len as u16);
     }
 
     fn process_jtag_sequence(&mut self, req: Request, resp: &mut ResponseWriter) {
