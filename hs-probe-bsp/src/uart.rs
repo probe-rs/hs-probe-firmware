@@ -88,12 +88,12 @@ impl<'a> UART<'a> {
 
     /// Read new UART data.
     ///
-    /// Returns Some(&[u8]) if new data was available.
+    /// Returns number of bytes written to buffer.
     ///
     /// Reads at most rx.len() new bytes, which may be less than what was received.
     /// Remaining data will be read on the next call, so long as the internal buffer
     /// doesn't overflow, which is not detected.
-    pub fn read<'buf>(&mut self, rx: &'buf mut [u8]) -> Option<&'buf [u8]> {
+    pub fn read(&mut self, rx: &mut [u8]) -> usize {
         // See what index the DMA is going to write next, and copy out
         // all prior data. Even if the DMA writes new data while we're
         // processing we won't get out of sync and will handle the new
@@ -103,7 +103,7 @@ impl<'a> UART<'a> {
         match dma_idx.cmp(&self.last_idx) {
             Ordering::Equal => {
                 // No action required if no data has been received.
-                None
+                0
             }
             Ordering::Less => {
                 // Wraparound occurred:
@@ -126,7 +126,7 @@ impl<'a> UART<'a> {
                 rx[n1..(n1 + n2)].copy_from_slice(&self.buffer[..n2]);
 
                 self.last_idx = new_last_idx;
-                Some(&rx[..(n1 + n2)])
+                n1 + n2
             }
             Ordering::Greater => {
                 // New data, no wraparound:
@@ -141,7 +141,7 @@ impl<'a> UART<'a> {
                 rx[..n].copy_from_slice(&self.buffer[self.last_idx..self.last_idx + n]);
 
                 self.last_idx += n;
-                Some(&rx[..n])
+                n
             }
         }
     }

@@ -329,7 +329,12 @@ impl<'a> DAP<'a> {
     /// Polls the UART buffer for new SWO data, returning
     /// any data ready for streaming out the SWO EP.
     pub fn poll_swo(&mut self) -> Option<&[u8]> {
-        self.uart.read(&mut self.rbuf)
+        let len = self.uart.read(&mut self.rbuf);
+        if len > 0 {
+            Some(&self.rbuf[0..len])
+        } else {
+            None
+        }
     }
 
     fn process_info(&mut self, mut req: Request, version: DAPVersion) -> ResponseWriter {
@@ -688,15 +693,13 @@ impl<'a> DAP<'a> {
         resp.write_u8(self.uart.is_active() as u8);
         // Read data from UART
         let mut buf = [0u8; 60];
-        match self.uart.read(&mut buf[..n]) {
-            None => {
-                resp.write_u16(0);
-            }
-            Some(data) => {
-                resp.write_u16(data.len() as u16);
-                resp.write_slice(data);
-            }
-        }
+
+        let len = self.uart.read(&mut buf[..n]);
+
+        resp.write_u16(len as u16);
+
+        resp.write_slice(&buf[0..len]);
+
         resp
     }
 
