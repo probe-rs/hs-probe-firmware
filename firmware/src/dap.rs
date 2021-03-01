@@ -1,8 +1,6 @@
 // Copyright 2019-2020 Adam Greig
 // Dual licensed under the Apache 2.0 and MIT licenses.
 
-#![allow(clippy::identity_op)]
-
 use crate::{
     bsp::{gpio::Pins, uart::UART},
     jtag, swd,
@@ -799,7 +797,6 @@ impl<'a> DAP<'a> {
         }
     }
 
-    #[allow(clippy::collapsible_if)]
     fn process_transfer_block(&mut self, mut req: Request, resp: &mut ResponseWriter) {
         let _idx = req.next_u8();
         let ntransfers = req.next_u16();
@@ -819,12 +816,10 @@ impl<'a> DAP<'a> {
         let mut transfers = 0;
 
         // If reading an AP register, post first read early.
-        if rnw && apndp {
-            if self.swd.read_ap(a).check(resp.mut_at(3)).is_none() {
-                // Quit early on error
-                resp.write_u16_at(1, 1);
-                return;
-            }
+        if rnw && apndp && self.swd.read_ap(a).check(resp.mut_at(3)).is_none() {
+            // Quit early on error
+            resp.write_u16_at(1, 1);
+            return;
         }
 
         for transfer_idx in 0..ntransfers {

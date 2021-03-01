@@ -76,7 +76,7 @@ impl<'a> JTAG<'a> {
             let frame_bits = core::cmp::min(bits, 8);
             for _ in 0..frame_bits {
                 let bit = byte & 1;
-                byte = byte >> 1;
+                byte >>= 1;
 
                 self.pins.tms.set_bool(bit != 0);
                 self.pins.tck.set_low();
@@ -109,7 +109,7 @@ impl<'a> JTAG<'a> {
     /// Returns the number of bytes of rxbuf which were written to.
     pub fn sequences(&self, data: &[u8], rxbuf: &mut [u8]) -> usize {
         // Read request header containing number of sequences.
-        if data.len() == 0 {
+        if data.is_empty() {
             return 0;
         };
         let mut nseqs = data[0];
@@ -132,7 +132,7 @@ impl<'a> JTAG<'a> {
             let transfer_type = data[0] & 0b1100_0000;
             while nseqs > 0 {
                 // Read header byte for this sequence.
-                if data.len() == 0 {
+                if data.is_empty() {
                     break;
                 };
                 let header = data[0];
@@ -178,7 +178,7 @@ impl<'a> JTAG<'a> {
         // Process each sequence.
         for _ in 0..nseqs {
             // Read header byte for this sequence.
-            if data.len() == 0 {
+            if data.is_empty() {
                 break;
             };
             let header = data[0];

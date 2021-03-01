@@ -33,6 +33,7 @@ struct InitializedUSB {
     dfu: DfuRuntime,
 }
 
+#[allow(clippy::large_enum_variant)]
 enum State {
     Uninitialized(UninitializedUSB),
     Initialized(InitializedUSB),
@@ -42,7 +43,7 @@ enum State {
 impl State {
     pub fn as_initialized(&self) -> &InitializedUSB {
         if let State::Initialized(initialized) = self {
-            return initialized;
+            initialized
         } else {
             panic!("USB is not initialized yet");
         }
@@ -50,7 +51,7 @@ impl State {
 
     pub fn as_initialized_mut(&mut self) -> &mut InitializedUSB {
         if let State::Initialized(initialized) = self {
-            return initialized;
+            initialized
         } else {
             panic!("USB is not initialized yet");
         }

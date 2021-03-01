@@ -2,6 +2,7 @@ use crate::dap::DAPVersion;
 use hs_probe_bsp as bsp;
 use hs_probe_bsp::rcc::CoreFrequency;
 
+#[allow(clippy::large_enum_variant)]
 pub enum Request {
     Suspend,
     DAP1Command(([u8; 64], usize)),
@@ -21,6 +22,7 @@ pub struct App<'a> {
 }
 
 impl<'a> App<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         rcc: &'a bsp::rcc::RCC,
         dma: &'a bsp::dma::DMA,
