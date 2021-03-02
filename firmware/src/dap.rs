@@ -3,7 +3,7 @@
 
 use crate::{
     bsp::{gpio::Pins, uart::UART},
-    jtag, swd,
+    jtag, swd, DAP1_PACKET_SIZE, DAP2_PACKET_SIZE,
 };
 use core::convert::{TryFrom, TryInto};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -374,11 +374,11 @@ impl<'a> DAP<'a> {
                 match version {
                     DAPVersion::V1 => {
                         // Maximum of 64 bytes per packet
-                        resp.write_u16(64);
+                        resp.write_u16(DAP1_PACKET_SIZE);
                     }
                     DAPVersion::V2 => {
                         // Maximum of 512 bytes per packet
-                        resp.write_u16(512);
+                        resp.write_u16(DAP2_PACKET_SIZE);
                     }
                 }
             }

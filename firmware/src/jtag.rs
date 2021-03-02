@@ -5,6 +5,7 @@ use crate::bsp::delay::Delay;
 use crate::bsp::dma::DMA;
 use crate::bsp::gpio::{Pin, Pins};
 use crate::bsp::spi::SPI;
+use crate::DAP2_PACKET_SIZE;
 use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 struct JTAGPins<'a> {
@@ -127,7 +128,7 @@ impl<'a> JTAG<'a> {
         // Process alike sequences in one shot
         // This
         if !self.use_bitbang.load(Ordering::SeqCst) {
-            let mut buffer = [0u8; 512];
+            let mut buffer = [0u8; DAP2_PACKET_SIZE as usize];
             let mut buffer_idx = 0;
             let transfer_type = data[0] & 0b1100_0000;
             while nseqs > 0 {

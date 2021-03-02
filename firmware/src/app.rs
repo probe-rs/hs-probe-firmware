@@ -1,12 +1,13 @@
 use crate::dap::DAPVersion;
+use crate::{DAP1_PACKET_SIZE, DAP2_PACKET_SIZE};
 use hs_probe_bsp as bsp;
 use hs_probe_bsp::rcc::CoreFrequency;
 
 #[allow(clippy::large_enum_variant)]
 pub enum Request {
     Suspend,
-    DAP1Command(([u8; 64], usize)),
-    DAP2Command(([u8; 512], usize)),
+    DAP1Command(([u8; DAP1_PACKET_SIZE as usize], usize)),
+    DAP2Command(([u8; DAP2_PACKET_SIZE as usize], usize)),
 }
 
 pub struct App<'a> {
@@ -18,7 +19,7 @@ pub struct App<'a> {
     usb: &'a mut crate::usb::USB,
     dap: &'a mut crate::dap::DAP<'a>,
     delay: &'a bsp::delay::Delay,
-    resp_buf: [u8; 512],
+    resp_buf: [u8; DAP2_PACKET_SIZE as usize],
 }
 
 impl<'a> App<'a> {
@@ -42,7 +43,7 @@ impl<'a> App<'a> {
             usb,
             dap,
             delay,
-            resp_buf: [0; 512],
+            resp_buf: [0; DAP2_PACKET_SIZE as usize],
         }
     }
 
@@ -98,7 +99,7 @@ impl<'a> App<'a> {
             Request::DAP1Command((report, n)) => {
                 let len = self.dap.process_command(
                     &report[..n],
-                    &mut self.resp_buf[..64],
+                    &mut self.resp_buf[..DAP1_PACKET_SIZE as usize],
                     DAPVersion::V1,
                 );
 

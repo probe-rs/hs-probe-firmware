@@ -1,4 +1,5 @@
 use crate::app::Request;
+use crate::DAP1_PACKET_SIZE;
 use usb_device::class_prelude::*;
 use usb_device::control::{Recipient, RequestType};
 use usb_device::Result;
@@ -49,7 +50,7 @@ impl<B: UsbBus> CmsisDapV1<'_, B> {
                 .alloc(
                     Some(EndpointAddress::from(0x01)),
                     EndpointType::Interrupt,
-                    64,
+                    DAP1_PACKET_SIZE,
                     1,
                 )
                 .expect("alloc_ep failed"),
@@ -57,7 +58,7 @@ impl<B: UsbBus> CmsisDapV1<'_, B> {
                 .alloc(
                     Some(EndpointAddress::from(0x81)),
                     EndpointType::Interrupt,
-                    64,
+                    DAP1_PACKET_SIZE,
                     1,
                 )
                 .expect("alloc_ep failed"),
@@ -65,7 +66,7 @@ impl<B: UsbBus> CmsisDapV1<'_, B> {
     }
 
     pub fn process(&mut self) -> Option<Request> {
-        let mut buf = [0u8; 64];
+        let mut buf = [0u8; DAP1_PACKET_SIZE as usize];
         match self.read_ep.read(&mut buf) {
             Ok(size) if size > 0 => Some(Request::DAP1Command((buf, size))),
             _ => None,
