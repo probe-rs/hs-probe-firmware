@@ -286,11 +286,6 @@ impl<'a> DAP<'a> {
             None => return 0,
         };
 
-        if req.command == Command::DAP_TransferAbort {
-            self.process_transfer_abort();
-            return 0;
-        }
-
         let resp = &mut ResponseWriter::new(req.command, rbuf);
 
         match req.command {
@@ -316,7 +311,11 @@ impl<'a> DAP<'a> {
             Command::DAP_TransferConfigure => self.process_transfer_configure(req, resp),
             Command::DAP_Transfer => self.process_transfer(req, resp),
             Command::DAP_TransferBlock => self.process_transfer_block(req, resp),
-            Command::DAP_TransferAbort => unreachable!(),
+            Command::DAP_TransferAbort => {
+                self.process_transfer_abort();
+                // Do not send a response for transfer abort commands
+                return 0;
+            }
             Command::Unimplemented => {}
         }
 
