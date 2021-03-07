@@ -137,7 +137,7 @@ impl SPI {
     /// Wait for any pending operation then disable SPI
     pub fn disable(&self) {
         self.wait_busy();
-        write_reg!(spi, self.spi, CR1, SPE: Disabled);
+        modify_reg!(spi, self.spi, CR1, SPE: Disabled);
     }
 
     /// Transmit `txdata` and write the same number of bytes into `rxdata`.
@@ -153,9 +153,8 @@ impl SPI {
         // Busy wait for RX DMA completion (at most 43µs)
         while dma.spi2_busy() {}
 
-        // Disable SPI and DMA
+        // Disable DMA
         dma.spi2_disable();
-        modify_reg!(spi, self.spi, CR1, SPE: Disabled);
     }
 
     /// Transmit 4 bits
