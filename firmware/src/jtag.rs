@@ -171,7 +171,11 @@ impl<'a> JTAG<'a> {
                 if capture != 0 {
                     rxidx += buffer_idx;
                 }
+                // Set TDI GPIO to the last bit the SPI peripheral transmitted,
+                // to prevent it changing state when we set it to an output.
+                self.pins.tdi.set_bool((buffer[buffer_idx - 1] >> 7) != 0);
                 self.bitbang_mode();
+                self.spi.disable();
             }
         }
 
