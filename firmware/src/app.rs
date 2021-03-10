@@ -1,11 +1,13 @@
 use crate::dap::DAPVersion;
+use crate::{DAP1_PACKET_SIZE, DAP2_PACKET_SIZE};
 use hs_probe_bsp as bsp;
 use hs_probe_bsp::rcc::CoreFrequency;
 
+#[allow(clippy::large_enum_variant)]
 pub enum Request {
     Suspend,
-    DAP1Command(([u8; 64], usize)),
-    DAP2Command(([u8; 512], usize)),
+    DAP1Command(([u8; DAP1_PACKET_SIZE as usize], usize)),
+    DAP2Command(([u8; DAP2_PACKET_SIZE as usize], usize)),
 }
 
 pub struct App<'a> {
@@ -17,9 +19,11 @@ pub struct App<'a> {
     usb: &'a mut crate::usb::USB,
     dap: &'a mut crate::dap::DAP<'a>,
     delay: &'a bsp::delay::Delay,
+    resp_buf: [u8; DAP2_PACKET_SIZE as usize],
 }
 
 impl<'a> App<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         rcc: &'a bsp::rcc::RCC,
         dma: &'a bsp::dma::DMA,
@@ -39,6 +43,7 @@ impl<'a> App<'a> {
             usb,
             dap,
             delay,
+            resp_buf: [0; DAP2_PACKET_SIZE as usize],
         }
     }
 
@@ -81,8 +86,10 @@ impl<'a> App<'a> {
         if self.dap.is_swo_streaming() && !self.usb.dap2_swo_is_busy() {
             // Poll for new UART data when streaming is enabled and
             // the SWO endpoint is ready to transmit more data.
-            if let Some(data) = self.dap.poll_swo() {
-                self.usb.dap2_stream_swo(data);
+            let len = self.dap.read_swo(&mut self.resp_buf);
+
+            if len > 0 {
+                self.usb.dap2_stream_swo(&self.resp_buf[0..len]);
             }
         }
     }
@@ -90,15 +97,23 @@ impl<'a> App<'a> {
     fn process_request(&mut self, req: Request) {
         match req {
             Request::DAP1Command((report, n)) => {
-                let response = self.dap.process_command(&report[..n], DAPVersion::V1);
-                if let Some(data) = response {
-                    self.usb.dap1_reply(data);
+                let len = self.dap.process_command(
+                    &report[..n],
+                    &mut self.resp_buf[..DAP1_PACKET_SIZE as usize],
+                    DAPVersion::V1,
+                );
+
+                if len > 0 {
+                    self.usb.dap1_reply(&self.resp_buf[..len]);
                 }
             }
             Request::DAP2Command((report, n)) => {
-                let response = self.dap.process_command(&report[..n], DAPVersion::V2);
-                if let Some(data) = response {
-                    self.usb.dap2_reply(data);
+                let len =
+                    self.dap
+                        .process_command(&report[..n], &mut self.resp_buf, DAPVersion::V2);
+
+                if len > 0 {
+                    self.usb.dap2_reply(&self.resp_buf[..len]);
                 }
             }
             Request::Suspend => {

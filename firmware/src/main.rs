@@ -10,6 +10,9 @@ use stm32_device_signature::device_id_hex;
 
 const GIT_VERSION: &str = git_version!();
 
+const DAP1_PACKET_SIZE: u16 = 64;
+const DAP2_PACKET_SIZE: u16 = 512;
+
 mod app;
 mod dap;
 mod jtag;

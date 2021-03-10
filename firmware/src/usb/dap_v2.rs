@@ -1,4 +1,5 @@
 use crate::app::Request;
+use crate::DAP2_PACKET_SIZE;
 use usb_device::class_prelude::*;
 use usb_device::Result;
 
@@ -20,7 +21,7 @@ impl<B: UsbBus> CmsisDapV2<'_, B> {
                 .alloc(
                     Some(EndpointAddress::from(0x02)),
                     EndpointType::Bulk,
-                    512,
+                    DAP2_PACKET_SIZE,
                     0xff,
                 )
                 .expect("alloc_ep failed"),
@@ -28,7 +29,7 @@ impl<B: UsbBus> CmsisDapV2<'_, B> {
                 .alloc(
                     Some(EndpointAddress::from(0x82)),
                     EndpointType::Bulk,
-                    512,
+                    DAP2_PACKET_SIZE,
                     0xff,
                 )
                 .expect("alloc_ep failed"),
@@ -36,7 +37,7 @@ impl<B: UsbBus> CmsisDapV2<'_, B> {
                 .alloc(
                     Some(EndpointAddress::from(0x83)),
                     EndpointType::Bulk,
-                    512,
+                    DAP2_PACKET_SIZE,
                     0xff,
                 )
                 .expect("alloc_ep failed"),
@@ -45,7 +46,7 @@ impl<B: UsbBus> CmsisDapV2<'_, B> {
     }
 
     pub fn process(&mut self) -> Option<Request> {
-        let mut buf = [0u8; 512];
+        let mut buf = [0u8; DAP2_PACKET_SIZE as usize];
         match self.read_ep.read(&mut buf) {
             Ok(size) if size > 0 => Some(Request::DAP2Command((buf, size))),
             _ => None,

@@ -1,11 +1,9 @@
 // Copyright 2019-2020 Adam Greig
 // Dual licensed under the Apache 2.0 and MIT licenses.
 
-#![allow(clippy::identity_op)]
-
 use crate::{
     bsp::{gpio::Pins, uart::UART},
-    jtag, swd,
+    jtag, swd, DAP1_PACKET_SIZE, DAP2_PACKET_SIZE,
 };
 use core::convert::{TryFrom, TryInto};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -16,10 +14,11 @@ pub enum DAPVersion {
     V2,
 }
 
-#[derive(Copy, Clone, TryFromPrimitive)]
+#[derive(Copy, Clone, TryFromPrimitive, PartialEq)]
 #[allow(non_camel_case_types)]
 #[repr(u8)]
 enum Command {
+    // General Commands
     DAP_Info = 0x00,
     DAP_HostStatus = 0x01,
     DAP_Connect = 0x02,
@@ -28,13 +27,16 @@ enum Command {
     DAP_Delay = 0x09,
     DAP_ResetTarget = 0x0A,
 
+    // Common SWD/JTAG Commands
     DAP_SWJ_Pins = 0x10,
     DAP_SWJ_Clock = 0x11,
     DAP_SWJ_Sequence = 0x12,
 
+    // SWD Commands
     DAP_SWD_Configure = 0x13,
-    DAP_SWD_Sequence = 0x1D,
+    // DAP_SWD_Sequence = 0x1D,
 
+    // SWO Commands
     DAP_SWO_Transport = 0x17,
     DAP_SWO_Mode = 0x18,
     DAP_SWO_Baudrate = 0x19,
@@ -43,18 +45,22 @@ enum Command {
     DAP_SWO_ExtendedStatus = 0x1E,
     DAP_SWO_Data = 0x1C,
 
+    // JTAG Commands
     DAP_JTAG_Sequence = 0x14,
-    DAP_JTAG_Configure = 0x15,
-    DAP_JTAG_IDCODE = 0x16,
+    // DAP_JTAG_Configure = 0x15,
+    // DAP_JTAG_IDCODE = 0x16,
 
+    // Transfer Commands
     DAP_TransferConfigure = 0x04,
     DAP_Transfer = 0x05,
     DAP_TransferBlock = 0x06,
     DAP_TransferAbort = 0x07,
 
-    DAP_ExecuteCommands = 0x7F,
-    DAP_QueueCommands = 0x7E,
+    // Atomic Commands
+    // DAP_ExecuteCommands = 0x7F,
+    // DAP_QueueCommands = 0x7E,
 
+    // Unimplemented Command Response
     Unimplemented = 0xFF,
 }
 
@@ -134,15 +140,13 @@ struct Request<'a> {
 }
 
 impl<'a> Request<'a> {
+    /// Returns None if the report is empty
     pub fn from_report(report: &'a [u8]) -> Option<Self> {
-        if report.is_empty() {
-            return None;
-        }
-        let command = Command::try_from(report[0]).ok()?;
-        Some(Request {
-            command,
-            data: &report[1..],
-        })
+        let (command, data) = report.split_first()?;
+
+        let command = (*command).try_into().unwrap_or(Command::Unimplemented);
+
+        Some(Request { command, data })
     }
 
     pub fn next_u8(&mut self) -> u8 {
@@ -226,12 +230,12 @@ impl<'a> ResponseWriter<'a> {
         self.buf[idx]
     }
 
-    pub fn skip(&mut self, n: usize) {
-        self.idx += n;
+    pub fn remaining(&mut self) -> &mut [u8] {
+        &mut self.buf[self.idx..]
     }
 
-    pub fn finished(self) -> &'a [u8] {
-        &self.buf[..self.idx]
+    pub fn skip(&mut self, n: usize) {
+        self.idx += n;
     }
 }
 
@@ -245,7 +249,6 @@ pub struct DAP<'a> {
     jtag: jtag::JTAG<'a>,
     uart: &'a mut UART<'a>,
     pins: &'a Pins<'a>,
-    rbuf: [u8; 512],
     mode: Option<DAPMode>,
     swo_streaming: bool,
     match_retries: usize,
@@ -263,7 +266,6 @@ impl<'a> DAP<'a> {
             jtag,
             uart,
             pins,
-            rbuf: [0u8; 512],
             mode: None,
             swo_streaming: false,
             match_retries: 5,
@@ -272,36 +274,52 @@ impl<'a> DAP<'a> {
 
     /// Process a new CMSIS-DAP command from `report`.
     ///
-    /// Returns Some(response) if a response should be transmitted.
-    pub fn process_command(&mut self, report: &[u8], version: DAPVersion) -> Option<&[u8]> {
-        let req = Request::from_report(report)?;
+    /// Returns number of bytes written to response buffer.
+    pub fn process_command(
+        &mut self,
+        report: &[u8],
+        rbuf: &mut [u8],
+        version: DAPVersion,
+    ) -> usize {
+        let req = match Request::from_report(report) {
+            Some(req) => req,
+            None => return 0,
+        };
+
+        let resp = &mut ResponseWriter::new(req.command, rbuf);
+
         match req.command {
-            Command::DAP_Info => self.process_info(req, version),
-            Command::DAP_HostStatus => self.process_host_status(req),
-            Command::DAP_Connect => self.process_connect(req),
-            Command::DAP_Disconnect => self.process_disconnect(req),
-            Command::DAP_WriteABORT => self.process_write_abort(req),
-            Command::DAP_Delay => self.process_delay(req),
-            Command::DAP_ResetTarget => self.process_reset_target(req),
-            Command::DAP_SWJ_Pins => self.process_swj_pins(req),
-            Command::DAP_SWJ_Clock => self.process_swj_clock(req),
-            Command::DAP_SWJ_Sequence => self.process_swj_sequence(req),
-            Command::DAP_SWD_Configure => self.process_swd_configure(req),
-            Command::DAP_SWO_Transport => self.process_swo_transport(req),
-            Command::DAP_SWO_Mode => self.process_swo_mode(req),
-            Command::DAP_SWO_Baudrate => self.process_swo_baudrate(req),
-            Command::DAP_SWO_Control => self.process_swo_control(req),
-            Command::DAP_SWO_Status => self.process_swo_status(req),
-            Command::DAP_SWO_ExtendedStatus => self.process_swo_extended_status(req),
-            Command::DAP_SWO_Data => self.process_swo_data(req),
-            Command::DAP_JTAG_Sequence => self.process_jtag_sequence(req),
-            Command::DAP_TransferConfigure => self.process_transfer_configure(req),
-            Command::DAP_Transfer => self.process_transfer(req),
-            Command::DAP_TransferBlock => self.process_transfer_block(req),
-            Command::DAP_TransferAbort => self.process_transfer_abort(req),
-            _ => Some(ResponseWriter::new(Command::Unimplemented, &mut self.rbuf)),
+            Command::DAP_Info => self.process_info(req, resp, version),
+            Command::DAP_HostStatus => self.process_host_status(req, resp),
+            Command::DAP_Connect => self.process_connect(req, resp),
+            Command::DAP_Disconnect => self.process_disconnect(req, resp),
+            Command::DAP_WriteABORT => self.process_write_abort(req, resp),
+            Command::DAP_Delay => self.process_delay(req, resp),
+            Command::DAP_ResetTarget => self.process_reset_target(req, resp),
+            Command::DAP_SWJ_Pins => self.process_swj_pins(req, resp),
+            Command::DAP_SWJ_Clock => self.process_swj_clock(req, resp),
+            Command::DAP_SWJ_Sequence => self.process_swj_sequence(req, resp),
+            Command::DAP_SWD_Configure => self.process_swd_configure(req, resp),
+            Command::DAP_SWO_Transport => self.process_swo_transport(req, resp),
+            Command::DAP_SWO_Mode => self.process_swo_mode(req, resp),
+            Command::DAP_SWO_Baudrate => self.process_swo_baudrate(req, resp),
+            Command::DAP_SWO_Control => self.process_swo_control(req, resp),
+            Command::DAP_SWO_Status => self.process_swo_status(req, resp),
+            Command::DAP_SWO_ExtendedStatus => self.process_swo_extended_status(req, resp),
+            Command::DAP_SWO_Data => self.process_swo_data(req, resp),
+            Command::DAP_JTAG_Sequence => self.process_jtag_sequence(req, resp),
+            Command::DAP_TransferConfigure => self.process_transfer_configure(req, resp),
+            Command::DAP_Transfer => self.process_transfer(req, resp),
+            Command::DAP_TransferBlock => self.process_transfer_block(req, resp),
+            Command::DAP_TransferAbort => {
+                self.process_transfer_abort();
+                // Do not send a response for transfer abort commands
+                return 0;
+            }
+            Command::Unimplemented => {}
         }
-        .map(|resp| resp.finished())
+
+        resp.idx
     }
 
     /// Returns true if SWO streaming is currently active.
@@ -310,13 +328,12 @@ impl<'a> DAP<'a> {
     }
 
     /// Polls the UART buffer for new SWO data, returning
-    /// any data ready for streaming out the SWO EP.
-    pub fn poll_swo(&mut self) -> Option<&[u8]> {
-        self.uart.read(&mut self.rbuf)
+    /// number of bytes written to buffer.
+    pub fn read_swo(&mut self, buf: &mut [u8]) -> usize {
+        self.uart.read(buf)
     }
 
-    fn process_info(&mut self, mut req: Request, version: DAPVersion) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_info(&mut self, mut req: Request, resp: &mut ResponseWriter, version: DAPVersion) {
         match DAPInfoID::try_from(req.next_u8()) {
             // Return 0-length string for VendorID, ProductID, SerialNumber
             // to indicate they should be read from USB descriptor instead
@@ -357,21 +374,19 @@ impl<'a> DAP<'a> {
                 match version {
                     DAPVersion::V1 => {
                         // Maximum of 64 bytes per packet
-                        resp.write_u16(64);
+                        resp.write_u16(DAP1_PACKET_SIZE);
                     }
                     DAPVersion::V2 => {
                         // Maximum of 512 bytes per packet
-                        resp.write_u16(512);
+                        resp.write_u16(DAP2_PACKET_SIZE);
                     }
                 }
             }
-            _ => return None,
+            _ => resp.write_u8(0),
         }
-        Some(resp)
     }
 
-    fn process_host_status(&mut self, mut req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_host_status(&mut self, mut req: Request, resp: &mut ResponseWriter) {
         let status_type = req.next_u8();
         let status_status = req.next_u8();
         // Use HostStatus to set our LED when host is connected to target
@@ -389,11 +404,9 @@ impl<'a> DAP<'a> {
             }
         }
         resp.write_u8(0);
-        Some(resp)
     }
 
-    fn process_connect(&mut self, mut req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_connect(&mut self, mut req: Request, resp: &mut ResponseWriter) {
         let port = req.next_u8();
         match ConnectPort::try_from(port) {
             Ok(ConnectPort::Default) | Ok(ConnectPort::SWD) => {
@@ -412,24 +425,20 @@ impl<'a> DAP<'a> {
                 resp.write_u8(ConnectPortResponse::Failed as u8);
             }
         }
-        Some(resp)
     }
 
-    fn process_disconnect(&mut self, req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_disconnect(&mut self, _req: Request, resp: &mut ResponseWriter) {
         self.pins.high_impedance_mode();
         self.mode = None;
         self.swd.spi_disable();
         self.jtag.spi_disable();
         resp.write_ok();
-        Some(resp)
     }
 
-    fn process_write_abort(&mut self, mut req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_write_abort(&mut self, mut req: Request, resp: &mut ResponseWriter) {
         if self.mode.is_none() {
             resp.write_err();
-            return Some(resp);
+            return;
         }
         let _idx = req.next_u8();
         let word = req.next_u32();
@@ -437,27 +446,21 @@ impl<'a> DAP<'a> {
             Ok(_) => resp.write_ok(),
             Err(_) => resp.write_err(),
         }
-        Some(resp)
     }
 
-    fn process_delay(&mut self, mut req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_delay(&mut self, mut req: Request, resp: &mut ResponseWriter) {
         let delay = req.next_u16() as u32;
         cortex_m::asm::delay(48 * delay);
         resp.write_ok();
-        Some(resp)
     }
 
-    fn process_reset_target(&mut self, req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_reset_target(&mut self, _req: Request, resp: &mut ResponseWriter) {
         resp.write_ok();
         // "No device specific reset sequence is implemented"
         resp.write_u8(0);
-        Some(resp)
     }
 
-    fn process_swj_pins(&mut self, mut req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_swj_pins(&mut self, mut req: Request, resp: &mut ResponseWriter) {
         let output = req.next_u8();
         let mask = req.next_u8();
         let wait = req.next_u32();
@@ -507,11 +510,9 @@ impl<'a> DAP<'a> {
             | (1 << NTRST_POS)
             | ((self.pins.reset.get_state() as u8) << NRESET_POS);
         resp.write_u8(state);
-        Some(resp)
     }
 
-    fn process_swj_clock(&mut self, mut req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_swj_clock(&mut self, mut req: Request, resp: &mut ResponseWriter) {
         let clock = req.next_u32();
 
         self.jtag.set_clock(clock);
@@ -521,12 +522,9 @@ impl<'a> DAP<'a> {
         } else {
             resp.write_err();
         }
-
-        Some(resp)
     }
 
-    fn process_swj_sequence(&mut self, mut req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_swj_sequence(&mut self, mut req: Request, resp: &mut ResponseWriter) {
         let nbits: usize = match req.next_u8() {
             // CMSIS-DAP says 0 means 256 bits
             0 => 256,
@@ -540,7 +538,7 @@ impl<'a> DAP<'a> {
             &payload[..nbytes]
         } else {
             resp.write_err();
-            return Some(resp);
+            return;
         };
 
         match self.mode {
@@ -554,16 +552,14 @@ impl<'a> DAP<'a> {
             }
             None => {
                 resp.write_err();
-                return Some(resp);
+                return;
             }
         }
 
         resp.write_ok();
-        Some(resp)
     }
 
-    fn process_swd_configure(&mut self, mut req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_swd_configure(&mut self, mut req: Request, resp: &mut ResponseWriter) {
         let config = req.next_u8();
         let clk_period = config & 0b011;
         let always_data = (config & 0b100) != 0;
@@ -572,11 +568,9 @@ impl<'a> DAP<'a> {
         } else {
             resp.write_err();
         }
-        Some(resp)
     }
 
-    fn process_swo_transport(&mut self, mut req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_swo_transport(&mut self, mut req: Request, resp: &mut ResponseWriter) {
         let transport = req.next_u8();
         match SWOTransport::try_from(transport) {
             Ok(SWOTransport::None) => {
@@ -593,11 +587,9 @@ impl<'a> DAP<'a> {
             }
             _ => resp.write_err(),
         }
-        Some(resp)
     }
 
-    fn process_swo_mode(&mut self, mut req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_swo_mode(&mut self, mut req: Request, resp: &mut ResponseWriter) {
         let mode = req.next_u8();
         match SWOMode::try_from(mode) {
             Ok(SWOMode::Off) => {
@@ -608,19 +600,15 @@ impl<'a> DAP<'a> {
             }
             _ => resp.write_err(),
         }
-        Some(resp)
     }
 
-    fn process_swo_baudrate(&mut self, mut req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_swo_baudrate(&mut self, mut req: Request, resp: &mut ResponseWriter) {
         let target = req.next_u32();
         let actual = self.uart.set_baud(target);
         resp.write_u32(actual);
-        Some(resp)
     }
 
-    fn process_swo_control(&mut self, mut req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_swo_control(&mut self, mut req: Request, resp: &mut ResponseWriter) {
         match SWOControl::try_from(req.next_u8()) {
             Ok(SWOControl::Stop) => {
                 self.uart.stop();
@@ -632,11 +620,9 @@ impl<'a> DAP<'a> {
             }
             _ => resp.write_err(),
         }
-        Some(resp)
     }
 
-    fn process_swo_status(&mut self, req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_swo_status(&mut self, _req: Request, resp: &mut ResponseWriter) {
         // Trace status:
         // Bit 0: trace capture active
         // Bit 6: trace stream error (always written as 0)
@@ -644,11 +630,9 @@ impl<'a> DAP<'a> {
         resp.write_u8(self.uart.is_active() as u8);
         // Trace count: remaining bytes in buffer
         resp.write_u32(self.uart.bytes_available() as u32);
-        Some(resp)
     }
 
-    fn process_swo_extended_status(&mut self, req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_swo_extended_status(&mut self, _req: Request, resp: &mut ResponseWriter) {
         // Trace status:
         // Bit 0: trace capture active
         // Bit 6: trace stream error (always written as 0)
@@ -660,57 +644,48 @@ impl<'a> DAP<'a> {
         resp.write_u32(0);
         // TD_TimeStamp: test domain timer value for trace sequence
         resp.write_u32(0);
-        Some(resp)
     }
 
-    fn process_swo_data(&mut self, mut req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
-        // Limit maximum requested bytes to our maximum return size
-        let n = usize::min(req.next_u16() as usize, 60);
+    fn process_swo_data(&mut self, mut req: Request, resp: &mut ResponseWriter) {
         // Write status byte to response
         resp.write_u8(self.uart.is_active() as u8);
-        // Read data from UART
-        let mut buf = [0u8; 60];
-        match self.uart.read(&mut buf[..n]) {
-            None => {
-                resp.write_u16(0);
-            }
-            Some(data) => {
-                resp.write_u16(data.len() as u16);
-                resp.write_slice(data);
-            }
+
+        // Skip length for now
+        resp.skip(2);
+
+        let mut buf = resp.remaining();
+
+        // Limit maximum return size to maximum requested bytes
+        let n = req.next_u16() as usize;
+        if buf.len() > n {
+            buf = &mut buf[..n];
         }
-        Some(resp)
+
+        // Read data from UART
+        let len = self.uart.read(&mut buf);
+        resp.skip(len);
+
+        // Go back and write length
+        resp.write_u16_at(2, len as u16);
     }
 
-    fn process_jtag_sequence(&mut self, req: Request) -> Option<ResponseWriter> {
+    fn process_jtag_sequence(&mut self, req: Request, resp: &mut ResponseWriter) {
         match self.mode {
             Some(DAPMode::JTAG) => {}
             _ => {
-                let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
                 resp.write_err();
-                return Some(resp);
+                return;
             }
         }
 
-        // Extract command for later use
-        let command = req.command;
+        resp.write_ok();
 
         // Run requested JTAG sequences. Cannot fail.
-        // Returned data is written into rbuf before it's turned into a Response.
-        let size = self.jtag.sequences(req.rest(), &mut self.rbuf[2..]);
-
-        // Create a response wrapping the new data.
-        let mut resp = ResponseWriter::new(command, &mut self.rbuf);
-        resp.write_ok();
+        let size = self.jtag.sequences(req.rest(), resp.remaining());
         resp.skip(size);
-
-        Some(resp)
     }
 
-    fn process_transfer_configure(&mut self, mut req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
-
+    fn process_transfer_configure(&mut self, mut req: Request, resp: &mut ResponseWriter) {
         // We don't support variable idle cycles
         let _idle_cycles = req.next_u8();
 
@@ -721,11 +696,9 @@ impl<'a> DAP<'a> {
         self.match_retries = req.next_u16() as usize;
 
         resp.write_ok();
-        Some(resp)
     }
 
-    fn process_transfer(&mut self, mut req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_transfer(&mut self, mut req: Request, resp: &mut ResponseWriter) {
         let _idx = req.next_u8();
         let ntransfers = req.next_u8();
         let mut match_mask = 0xFFFF_FFFFu32;
@@ -821,13 +794,9 @@ impl<'a> DAP<'a> {
                 }
             }
         }
-
-        Some(resp)
     }
 
-    #[allow(clippy::collapsible_if)]
-    fn process_transfer_block(&mut self, mut req: Request) -> Option<ResponseWriter> {
-        let mut resp = ResponseWriter::new(req.command, &mut self.rbuf);
+    fn process_transfer_block(&mut self, mut req: Request, resp: &mut ResponseWriter) {
         let _idx = req.next_u8();
         let ntransfers = req.next_u16();
         let transfer_req = req.next_u8();
@@ -846,12 +815,10 @@ impl<'a> DAP<'a> {
         let mut transfers = 0;
 
         // If reading an AP register, post first read early.
-        if rnw && apndp {
-            if self.swd.read_ap(a).check(resp.mut_at(3)).is_none() {
-                // Quit early on error
-                resp.write_u16_at(1, 1);
-                return Some(resp);
-            }
+        if rnw && apndp && self.swd.read_ap(a).check(resp.mut_at(3)).is_none() {
+            // Quit early on error
+            resp.write_u16_at(1, 1);
+            return;
         }
 
         for transfer_idx in 0..ntransfers {
@@ -895,16 +862,12 @@ impl<'a> DAP<'a> {
 
         // Write number of transfers to response
         resp.write_u16_at(1, transfers + 1);
-
-        // Return our response data
-        Some(resp)
     }
 
-    fn process_transfer_abort(&mut self, _req: Request) -> Option<ResponseWriter> {
+    fn process_transfer_abort(&mut self) {
         // We'll only ever receive an abort request when we're not already
         // processing anything else, since processing blocks checking for
         // new requests. Therefore there's nothing to do here.
-        None
     }
 }
 

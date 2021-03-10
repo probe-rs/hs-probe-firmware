@@ -5,6 +5,7 @@ use crate::bsp::delay::Delay;
 use crate::bsp::dma::DMA;
 use crate::bsp::gpio::{Pin, Pins};
 use crate::bsp::spi::SPI;
+use crate::DAP2_PACKET_SIZE;
 use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 struct JTAGPins<'a> {
@@ -76,7 +77,7 @@ impl<'a> JTAG<'a> {
             let frame_bits = core::cmp::min(bits, 8);
             for _ in 0..frame_bits {
                 let bit = byte & 1;
-                byte = byte >> 1;
+                byte >>= 1;
 
                 self.pins.tms.set_bool(bit != 0);
                 self.pins.tck.set_low();
@@ -109,7 +110,7 @@ impl<'a> JTAG<'a> {
     /// Returns the number of bytes of rxbuf which were written to.
     pub fn sequences(&self, data: &[u8], rxbuf: &mut [u8]) -> usize {
         // Read request header containing number of sequences.
-        if data.len() == 0 {
+        if data.is_empty() {
             return 0;
         };
         let mut nseqs = data[0];
@@ -127,12 +128,12 @@ impl<'a> JTAG<'a> {
         // Process alike sequences in one shot
         // This
         if !self.use_bitbang.load(Ordering::SeqCst) {
-            let mut buffer = [0u8; 512];
+            let mut buffer = [0u8; DAP2_PACKET_SIZE as usize];
             let mut buffer_idx = 0;
             let transfer_type = data[0] & 0b1100_0000;
             while nseqs > 0 {
                 // Read header byte for this sequence.
-                if data.len() == 0 {
+                if data.is_empty() {
                     break;
                 };
                 let header = data[0];
@@ -182,7 +183,7 @@ impl<'a> JTAG<'a> {
         // Process each sequence.
         for _ in 0..nseqs {
             // Read header byte for this sequence.
-            if data.len() == 0 {
+            if data.is_empty() {
                 break;
             };
             let header = data[0];

@@ -1,4 +1,5 @@
 use crate::app::Request;
+use crate::DAP2_PACKET_SIZE;
 use hs_probe_bsp::otg_hs::{UsbBus, UsbBusType};
 use hs_probe_bsp::rcc::Clocks;
 use stm32ral::{otg_hs_device, otg_hs_global, otg_hs_pwrclk, usbphyc};
@@ -33,6 +34,7 @@ struct InitializedUSB {
     dfu: DfuRuntime,
 }
 
+#[allow(clippy::large_enum_variant)]
 enum State {
     Uninitialized(UninitializedUSB),
     Initialized(InitializedUSB),
@@ -42,7 +44,7 @@ enum State {
 impl State {
     pub fn as_initialized(&self) -> &InitializedUSB {
         if let State::Initialized(initialized) = self {
-            return initialized;
+            initialized
         } else {
             panic!("USB is not initialized yet");
         }
@@ -50,7 +52,7 @@ impl State {
 
     pub fn as_initialized_mut(&mut self) -> &mut InitializedUSB {
         if let State::Initialized(initialized) = self {
-            return initialized;
+            initialized
         } else {
             panic!("USB is not initialized yet");
         }
@@ -170,7 +172,7 @@ impl USB {
             }
 
             // Discard data from the serial interface
-            let mut buf = [0; 512];
+            let mut buf = [0; DAP2_PACKET_SIZE as usize];
             let _ = usb.serial.read(&mut buf);
         }
         None
