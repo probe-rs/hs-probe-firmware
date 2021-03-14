@@ -37,6 +37,10 @@ unsafe fn pre_init() {
 fn main() -> ! {
     rtt_init_print!();
 
+    // Enable I-cache
+    let mut cp = cortex_m::Peripherals::take().unwrap();
+    cp.SCB.enable_icache();
+
     let rcc = bsp::rcc::RCC::new(stm32ral::rcc::RCC::take().unwrap());
 
     let usb_phy = stm32ral::usbphyc::USBPHYC::take().unwrap();
