@@ -157,9 +157,6 @@ impl RCC {
         // Wait for system clock to be PLL
         while read_reg!(rcc, self.rcc, CFGR, SWS != PLL) {}
 
-        // Configure HCLK, PCLK1, PCLK2
-        modify_reg!(rcc, self.rcc, CFGR, PPRE1: Div1, PPRE2: Div1, HPRE: Div1);
-
         // Enable peripheral clocks
         modify_reg!(
             rcc,
