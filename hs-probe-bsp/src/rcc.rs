@@ -1,4 +1,4 @@
-use stm32ral::{flash, rcc};
+use stm32ral::{flash, pwr, rcc};
 use stm32ral::{modify_reg, read_reg, reset_reg};
 
 pub struct RCC {
@@ -111,8 +111,41 @@ impl RCC {
             PLLQ: pllq
         );
 
+        // Enable PWR domain and setup voltage scale and overdrive options
+        modify_reg!(rcc, self.rcc, APB1ENR, PWREN: Enabled);
+
+        let enable_overdrive;
+
+        // The scale can be modified only when the PLL is OFF and the
+        // HSI or HSE clock source is selected as system clock source.
+        let pwr = &*pwr::PWR;
+        if sysclk <= 144_000_000 {
+            modify_reg!(pwr, pwr, CR1, VOS: SCALE3);
+            enable_overdrive = false;
+        } else if sysclk <= 168_000_000 {
+            modify_reg!(pwr, pwr, CR1, VOS: SCALE2);
+            enable_overdrive = false;
+        } else if sysclk <= 180_000_000 {
+            modify_reg!(pwr, pwr, CR1, VOS: SCALE1);
+            enable_overdrive = false;
+        } else {
+            modify_reg!(pwr, pwr, CR1, VOS: SCALE1);
+            enable_overdrive = true;
+        }
+
         // Turn on PLL
         modify_reg!(rcc, self.rcc, CR, PLLON: On);
+
+        if enable_overdrive {
+            // Enable the over-drive mode
+            modify_reg!(pwr, pwr, CR1, ODEN: 1);
+            while read_reg!(pwr, pwr, CSR1, ODRDY) == 0 {}
+
+            // Switch the voltage regulator from normal mode to over-drive mode
+            modify_reg!(pwr, pwr, CR1, ODSWEN: 1);
+            while read_reg!(pwr, pwr, CSR1, ODSWRDY) == 0 {}
+        }
+
         // Wait for PLL to be ready
         while read_reg!(rcc, self.rcc, CR, PLLRDY == NotReady) {}
 
