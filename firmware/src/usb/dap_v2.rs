@@ -76,7 +76,7 @@ impl<B: UsbBus> CmsisDapV2<'_, B> {
 
 impl<B: UsbBus> UsbClass<B> for CmsisDapV2<'_, B> {
     fn get_configuration_descriptors(&self, writer: &mut DescriptorWriter) -> Result<()> {
-        writer.interface_with_string(self.interface, 0xff, 0, 0, self.name)?;
+        writer.interface_alt(self.interface, 0, 0xff, 0, 0, Some(self.name))?;
 
         writer.endpoint(&self.read_ep)?;
         writer.endpoint(&self.write_ep)?;

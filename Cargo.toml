@@ -5,7 +5,6 @@ members = [
 ]
 
 [patch.crates-io]
-usb-device = { git = "https://github.com/Disasm/usb-device", rev = "5d40bdce478e08c014ee13fcc85d8d895d73459d" }
 usbd-serial = { git = "https://github.com/Disasm/usbd-serial", rev = "827116e5fab66a51ab7d68774419b0f187b24b90" }
 
 [profile.release]
