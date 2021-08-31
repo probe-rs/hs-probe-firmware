@@ -11,7 +11,9 @@ cargo build --release
 
 ## Loading the firmware
 
-The HS-Probe supports `dfu-util` and can have its firmware loaded via it. To generate the bin, run:
+The HS-Probe supports `dfu-util` and can have its firmware loaded via it. To
+generate the bin, install
+[cargo-binutils](https://github.com/rust-embedded/cargo-binutils) and run:
 
 ```console
 cargo objcopy --release -- -O binary firmware.bin
