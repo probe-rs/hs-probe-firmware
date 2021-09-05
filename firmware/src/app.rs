@@ -118,8 +118,11 @@ impl<'a> App<'a> {
             }
             Request::Suspend => {
                 self.pins.high_impedance_mode();
+                self.pins.led_red.set_high();
                 self.pins.led_blue.set_high();
+                self.pins.led_green.set_high();
                 self.pins.tvcc_en.set_low();
+                self.pins.t5v_en.set_low();
                 self.swd_spi.disable();
                 self.jtag_spi.disable();
             }
