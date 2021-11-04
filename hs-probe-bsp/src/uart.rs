@@ -60,7 +60,7 @@ impl<'a> UART<'a> {
     /// Request a target baud rate. Returns actual baud rate set.
     pub fn set_baud(&self, baud: u32) -> u32 {
         // Find closest divider which is also an even integer >= 16
-        let mut div = 96_000_000 / baud;
+        let mut div = 144_000_000 / baud;
         div &= 0xffff_fffe;
         if div < 16 {
             div = 16;
@@ -71,7 +71,7 @@ impl<'a> UART<'a> {
         write_reg!(usart, self.uart, BRR, brr);
 
         // Return actual baud rate
-        96_000_000 / div
+        144_000_000 / div
     }
 
     /// Fetch current number of bytes available.
