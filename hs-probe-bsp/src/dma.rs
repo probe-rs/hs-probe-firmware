@@ -272,9 +272,9 @@ impl DMA {
             CDMEIF5: Clear,
             CFEIF5: Clear
         );
-        write_reg!(dma, self.dma1, NDTR5, rx.len() as u32);
-        write_reg!(dma, self.dma1, M0AR5, rx.as_mut_ptr() as u32);
-        modify_reg!(dma, self.dma1, CR5, EN: Enabled);
+        write_reg!(dma, self.dma2, NDTR5, rx.len() as u32);
+        write_reg!(dma, self.dma2, M0AR5, rx.as_mut_ptr() as u32);
+        modify_reg!(dma, self.dma2, CR5, EN: Enabled);
     }
 
     /// Return how many bytes are left to transfer for USART1
