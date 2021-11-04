@@ -6,12 +6,14 @@ use stm32ral::usart;
 use stm32ral::{modify_reg, read_reg, write_reg};
 
 use super::dma::DMA;
+use super::rcc::Clocks;
 
 pub struct UART<'a> {
     uart: usart::Instance,
     dma: &'a DMA,
     buffer: [u8; 256],
     last_idx: usize,
+    fck: u32,
 }
 
 impl<'a> UART<'a> {
@@ -21,7 +23,13 @@ impl<'a> UART<'a> {
             dma,
             buffer: [0; 256],
             last_idx: 0,
+            fck: 72_000_000,
         }
+    }
+
+    /// Set the UART peripheral clock speed, used for baud rate calculation.
+    pub fn setup(&mut self, clocks: &Clocks) {
+        self.fck = clocks.pclk2();
     }
 
     /// Begin UART reception into buffer.
@@ -59,19 +67,21 @@ impl<'a> UART<'a> {
 
     /// Request a target baud rate. Returns actual baud rate set.
     pub fn set_baud(&self, baud: u32) -> u32 {
-        // Find closest divider which is also an even integer >= 16
-        let mut div = 144_000_000 / baud;
+        // Find closest divider which is also an even integer >= 16.
+        // The baud rate is (2*fck)/BRR.
+        let mut div = (2*self.fck) / baud;
         div &= 0xffff_fffe;
         if div < 16 {
             div = 16;
         }
 
-        // Write BRR value based on div
+        // Write BRR value based on div.
+        // Since we are OVERSAMPLE8, shift bottom 4 bits down by 1.
         let brr = (div & 0xffff_fff0) | ((div & 0xf) >> 1);
         write_reg!(usart, self.uart, BRR, brr);
 
         // Return actual baud rate
-        144_000_000 / div
+        (2*self.fck) / div
     }
 
     /// Fetch current number of bytes available.

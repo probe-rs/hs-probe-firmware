@@ -2,7 +2,7 @@
 // Dual licensed under the Apache 2.0 and MIT licenses.
 
 use crate::{
-    bsp::{gpio::Pins, uart::UART},
+    bsp::{gpio::Pins, uart::UART, rcc::Clocks},
     jtag, swd, DAP1_PACKET_SIZE, DAP2_PACKET_SIZE,
 };
 use core::convert::{TryFrom, TryInto};
@@ -270,6 +270,13 @@ impl<'a> DAP<'a> {
             swo_streaming: false,
             match_retries: 5,
         }
+    }
+
+    /// Call with the system clock speeds to configure peripherals that require timing information.
+    ///
+    /// Currently this only configures the SWO USART baud rate calculation.
+    pub fn setup(&mut self, clocks: &Clocks) {
+        self.uart.setup(clocks);
     }
 
     /// Process a new CMSIS-DAP command from `report`.

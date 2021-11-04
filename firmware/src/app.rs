@@ -71,6 +71,9 @@ impl<'a> App<'a> {
         self.jtag_spi.set_base_clock(&clocks);
         self.jtag_spi.disable();
 
+        // Configure DAP timing information
+        self.dap.setup(&clocks);
+
         // Configure USB peripheral and connect to host
         self.usb.setup(&clocks, serial);
 
