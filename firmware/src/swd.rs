@@ -106,6 +106,14 @@ impl<'a> SWD<'a> {
         self.wait_retries = wait_retries;
     }
 
+    pub fn tx_sequence(&self, sequence: &[u8]) {
+        self.pins.swd_tx();
+        for byte in sequence {
+            self.spi.tx8(*byte);
+        }
+        self.spi.wait_busy();
+    }
+
     pub fn idle_low(&self) {
         self.spi.tx4(0x0);
     }
