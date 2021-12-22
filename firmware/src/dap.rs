@@ -472,13 +472,6 @@ impl<'a> DAP<'a> {
         let mask = req.next_u8();
         let wait = req.next_u32();
 
-        // Our pin mapping:
-        // SWDIO/TMS: FLASH_SI
-        // SWCLK/TCK: SCK
-        // SWO/TDO: FLASH_CS
-        // TDI: FPGA_RST
-        // nRESET: FLASH_SO
-        //
         // SWJ_Pins mapping:
         // 0: SWCLK/TCK
         // 1: SWDIO/TMS
@@ -486,8 +479,6 @@ impl<'a> DAP<'a> {
         // 3: TDO
         // 5: nTRST
         // 7: nRESET
-        //
-        // We only support setting nRESET.
 
         const SWCLK_POS: u8 = 0;
         const SWDIO_POS: u8 = 1;
@@ -495,16 +486,51 @@ impl<'a> DAP<'a> {
         const TDO_POS: u8 = 3;
         const NTRST_POS: u8 = 5;
         const NRESET_POS: u8 = 7;
-        const NRESET_MASK: u8 = 1 << NRESET_POS;
 
-        // If reset bit is in mask, apply output bit to pin
-        if (mask & NRESET_MASK) != 0 {
-            if output & NRESET_MASK != 0 {
-                self.pins.reset.set_high();
-            } else {
-                self.pins.reset.set_low();
-            }
+        macro_rules! set_pins {
+            (
+                $($bit_position:ident: { $($pin:ident, )+ }, )+
+            ) => {{
+                $(
+                    if (mask & (1 << $bit_position)) != 0 {
+                        if output & (1 << $bit_position) != 0 {
+                            $(
+                                self.pins.$pin.set_high();
+                            )+
+                        } else {
+                            $(
+                                self.pins.$pin.set_low();
+                            )+
+                        }
+                    }
+                )+
+            }}
         }
+
+        match self.mode {
+            Some(DAPMode::SWD) => {
+                self.pins.spi1_clk.set_mode_output();
+                self.pins.spi1_mosi.set_mode_output();
+                set_pins!(
+                    SWCLK_POS: { spi1_clk, },
+                );
+            }
+            Some(DAPMode::JTAG) => {
+                // All pins our output anyway
+                set_pins!(
+                    SWCLK_POS: { spi2_clk, },
+                    TDI_POS: { spi2_mosi, },
+                );
+            }
+            None => {
+                resp.write_err();
+                return;
+            }
+        };
+        set_pins!(
+            SWDIO_POS: { spi1_mosi, },
+            NRESET_POS: { reset, },
+        );
 
         // Delay required time in µs
         cortex_m::asm::delay(42 * wait);
