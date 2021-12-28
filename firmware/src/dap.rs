@@ -489,37 +489,40 @@ impl<'a> DAP<'a> {
 
         macro_rules! set_pins {
             (
-                $($bit_position:ident: { $($pin:ident, )+ }, )+
+                $($bit_position:ident: $pin:ident $({ $mode:ident })?, )+
             ) => {{
                 $(
                     if (mask & (1 << $bit_position)) != 0 {
+                        $( self.pins.$pin.$mode(); )?
                         if output & (1 << $bit_position) != 0 {
-                            $(
-                                self.pins.$pin.set_high();
-                            )+
+                            self.pins.$pin.set_high();
                         } else {
-                            $(
-                                self.pins.$pin.set_low();
-                            )+
+                            self.pins.$pin.set_low();
                         }
                     }
                 )+
-            }}
+            }};
         }
 
         match self.mode {
             Some(DAPMode::SWD) => {
-                self.pins.spi1_clk.set_mode_output();
-                self.pins.spi1_mosi.set_mode_output();
+                // SWD on idle runs GPIO in alternate mode (SPI peripheral), mode change
+                // required
                 set_pins!(
-                    SWCLK_POS: { spi1_clk, },
+                    SWDIO_POS: spi1_mosi { set_mode_output },
+                    SWCLK_POS: spi1_clk { set_mode_output },
                 );
             }
             Some(DAPMode::JTAG) => {
-                // All pins our output anyway
+                // JTAG on idle runs GPIO in bitbang mode, no mode changes required
+                //
+                // TDO in an input pin, ignored
+                // Note: DAPLink implementation also ignores TDO pin; even though CMSIS-DAP's
+                // SWJ_Pins command should allow to control it
                 set_pins!(
-                    SWCLK_POS: { spi2_clk, },
-                    TDI_POS: { spi2_mosi, },
+                    SWDIO_POS: spi1_mosi,
+                    SWCLK_POS: spi2_clk,
+                    TDI_POS: spi2_mosi,
                 );
             }
             None => {
@@ -528,8 +531,7 @@ impl<'a> DAP<'a> {
             }
         };
         set_pins!(
-            SWDIO_POS: { spi1_mosi, },
-            NRESET_POS: { reset, },
+            NRESET_POS: reset,
         );
 
         // Delay required time in µs
