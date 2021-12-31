@@ -472,14 +472,6 @@ impl<'a> DAP<'a> {
         let mask = req.next_u8();
         let wait = req.next_u32();
 
-        // SWJ_Pins mapping:
-        // 0: SWCLK/TCK
-        // 1: SWDIO/TMS
-        // 2: TDI
-        // 3: TDO
-        // 5: nTRST
-        // 7: nRESET
-
         const SWCLK_POS: u8 = 0;
         const SWDIO_POS: u8 = 1;
         const TDI_POS: u8 = 2;
@@ -487,51 +479,48 @@ impl<'a> DAP<'a> {
         const NTRST_POS: u8 = 5;
         const NRESET_POS: u8 = 7;
 
-        macro_rules! set_pins {
-            (
-                $($bit_position:ident: $pin:ident $({ $mode:ident })?, )+
-            ) => {{
-                $(
-                    if (mask & (1 << $bit_position)) != 0 {
-                        $( self.pins.$pin.$mode(); )?
-                        if output & (1 << $bit_position) != 0 {
-                            self.pins.$pin.set_high();
-                        } else {
-                            self.pins.$pin.set_low();
-                        }
-                    }
-                )+
-            }};
-        }
-
         match self.mode {
             Some(DAPMode::SWD) => {
-                // SWD on idle runs GPIO in alternate mode (SPI peripheral), mode change
-                // required
-                set_pins!(
-                    SWDIO_POS: spi1_mosi { set_mode_output },
-                    SWCLK_POS: spi1_clk { set_mode_output },
-                );
+                // In SWD mode, use SPI1 MOSI and CLK for SWDIO/TMS and SWCLK/TCK.
+                // Between transfers those pins are in SPI alternate mode, so swap them
+                // to output to manually set them. They'll be reset to SPI mode by the
+                // next transfer command.
+                if mask & (1 << SWDIO_POS) != 0 {
+                    self.pins.spi1_mosi.set_mode_output();
+                    self.pins.spi1_mosi.set_bool(output & (1 << SWDIO_POS) != 0);
+                }
+                if mask & (1 << SWCLK_POS) != 0 {
+                    self.pins.spi1_clk.set_mode_output();
+                    self.pins.spi1_clk.set_bool(output & (1 << SWCLK_POS) != 0);
+                }
             }
             Some(DAPMode::JTAG) => {
-                // JTAG on idle runs GPIO in bitbang mode, no mode changes required
+                // In JTAG mode, use SPI1 MOSI and SPI2 SLK for SWDIO/TMS and SWCLK/TCK,
+                // and SPI2 MOSI for TDI. Between transfers these pins are already in GPIO
+                // mode, so we don't need to change them.
                 //
-                // TDO in an input pin, ignored
-                // Note: DAPLink implementation also ignores TDO pin; even though CMSIS-DAP's
-                // SWJ_Pins command should allow to control it
-                set_pins!(
-                    SWDIO_POS: spi1_mosi,
-                    SWCLK_POS: spi2_clk,
-                    TDI_POS: spi2_mosi,
-                );
+                // TDO is an input pin for JTAG and is ignored to match the DAPLink implementation.
+                if mask & (1 << SWDIO_POS) != 0 {
+                    self.pins.spi1_mosi.set_bool(output & (1 << SWDIO_POS) != 0);
+                }
+                if mask & (1 << SWCLK_POS) != 0 {
+                    self.pins.spi2_clk.set_bool(output & (1 << SWCLK_POS) != 0);
+                }
+                if mask & (1 << TDI_POS) != 0 {
+                    self.pins.spi2_mosi.set_bool(output & (1 << TDI_POS) != 0);
+                }
             }
+
+            // When not in any mode, ignore JTAG/SWD pins entirely.
             None => ()
         };
-        set_pins!(
-            NRESET_POS: reset,
-        );
 
-        // Delay required time in µs
+        // Always allow setting the nRESET pin, which is always in output open-drain mode.
+        if mask & (1 << NRESET_POS) != 0 {
+            self.pins.reset.set_bool(output & (1 << NRESET_POS) != 0);
+        }
+
+        // Delay required time in µs (approximate delay).
         cortex_m::asm::delay(42 * wait);
 
         // Read and return pin state
