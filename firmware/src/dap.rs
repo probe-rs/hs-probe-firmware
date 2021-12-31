@@ -525,10 +525,7 @@ impl<'a> DAP<'a> {
                     TDI_POS: spi2_mosi,
                 );
             }
-            None => {
-                resp.write_err();
-                return;
-            }
+            None => ()
         };
         set_pins!(
             NRESET_POS: reset,
