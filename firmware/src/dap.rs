@@ -735,6 +735,11 @@ impl<'a> DAP<'a> {
         let ntransfers = req.next_u8();
         let mut match_mask = 0xFFFF_FFFFu32;
 
+        // Ensure SWD pins are in the right mode, in case they've been used as outputs
+        // by the SWJ_Pins command.
+        self.pins.swd_clk_spi();
+        self.pins.swd_tx();
+
         // Skip two bytes in resp to reserve space for final status,
         // which we update while processing.
         resp.write_u16(0);
@@ -835,6 +840,11 @@ impl<'a> DAP<'a> {
         let apndp = (transfer_req & (1 << 0)) != 0;
         let rnw = (transfer_req & (1 << 1)) != 0;
         let a = (transfer_req & (3 << 2)) >> 2;
+
+        // Ensure SWD pins are in the right mode, in case they've been used as outputs
+        // by the SWJ_Pins command.
+        self.pins.swd_clk_spi();
+        self.pins.swd_tx();
 
         // Skip three bytes in resp to reserve space for final status,
         // which we update while processing.

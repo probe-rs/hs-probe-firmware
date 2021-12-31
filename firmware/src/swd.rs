@@ -145,8 +145,6 @@ impl<'a> SWD<'a> {
     fn read_inner(&self, apndp: APnDP, a: u8) -> Result<u32> {
         let req = Self::make_request(apndp, RnW::R, a);
 
-        self.pins.swd_clk_spi();
-        self.pins.swd_tx();
         self.spi.tx8(req);
         self.spi.wait_busy();
         self.spi.drain();
@@ -185,8 +183,6 @@ impl<'a> SWD<'a> {
         let req = Self::make_request(apndp, RnW::W, a);
         let parity = data.count_ones() & 1;
 
-        self.pins.swd_clk_spi();
-        self.pins.swd_tx();
         self.spi.tx8(req);
         self.spi.wait_busy();
         self.spi.drain();
