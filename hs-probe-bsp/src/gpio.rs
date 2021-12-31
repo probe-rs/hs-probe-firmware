@@ -28,6 +28,7 @@ impl<'a> GPIO {
         self
     }
 
+    #[inline]
     pub fn toggle(&'a self, n: PinIndex) -> &Self {
         let pin = (read_reg!(gpio, self.p, IDR) >> (n as u8)) & 1;
         if pin == 1 {
@@ -37,6 +38,7 @@ impl<'a> GPIO {
         }
     }
 
+    #[inline]
     pub fn set_mode(&'a self, n: PinIndex, mode: u32) -> &Self {
         let offset = (n as u8) * 2;
         let mask = 0b11 << offset;
@@ -53,11 +55,13 @@ impl<'a> GPIO {
         MemoisedMode { mask: !mask, value }
     }
 
+    #[inline]
     pub fn apply_memoised_mode(&'a self, mode: MemoisedMode) -> &Self {
         modify_reg!(gpio, self.p, MODER, |r| (r & mode.mask) | mode.value);
         self
     }
 
+    #[inline]
     pub fn set_mode_input(&'a self, n: PinIndex) -> &Self {
         self.set_mode(n, gpio::MODER::MODER0::RW::Input)
     }
@@ -66,6 +70,7 @@ impl<'a> GPIO {
         Self::memoise_mode(n, gpio::MODER::MODER0::RW::Input)
     }
 
+    #[inline]
     pub fn set_mode_output(&'a self, n: PinIndex) -> &Self {
         self.set_mode(n, gpio::MODER::MODER0::RW::Output)
     }
@@ -74,6 +79,7 @@ impl<'a> GPIO {
         Self::memoise_mode(n, gpio::MODER::MODER0::RW::Output)
     }
 
+    #[inline]
     pub fn set_mode_alternate(&'a self, n: PinIndex) -> &Self {
         self.set_mode(n, gpio::MODER::MODER0::RW::Alternate)
     }
@@ -82,6 +88,7 @@ impl<'a> GPIO {
         Self::memoise_mode(n, gpio::MODER::MODER0::RW::Alternate)
     }
 
+    #[inline]
     pub fn set_mode_analog(&'a self, n: PinIndex) -> &Self {
         self.set_mode(n, gpio::MODER::MODER0::RW::Analog)
     }
@@ -90,6 +97,7 @@ impl<'a> GPIO {
         Self::memoise_mode(n, gpio::MODER::MODER0::RW::Analog)
     }
 
+    #[inline]
     pub fn set_otype(&'a self, n: PinIndex, otype: u32) -> &Self {
         let offset = n as u8;
         let mask = 0b1 << offset;
@@ -98,14 +106,17 @@ impl<'a> GPIO {
         self
     }
 
+    #[inline]
     pub fn set_otype_opendrain(&'a self, n: PinIndex) -> &Self {
         self.set_otype(n, gpio::OTYPER::OT0::RW::OpenDrain)
     }
 
+    #[inline]
     pub fn set_otype_pushpull(&'a self, n: PinIndex) -> &Self {
         self.set_otype(n, gpio::OTYPER::OT0::RW::PushPull)
     }
 
+    #[inline]
     pub fn set_ospeed(&'a self, n: PinIndex, ospeed: u32) -> &Self {
         let offset = (n as u8) * 2;
         let mask = 0b11 << offset;
@@ -114,22 +125,27 @@ impl<'a> GPIO {
         self
     }
 
+    #[inline]
     pub fn set_ospeed_low(&'a self, n: PinIndex) -> &Self {
         self.set_ospeed(n, gpio::OSPEEDR::OSPEEDR0::RW::LowSpeed)
     }
 
+    #[inline]
     pub fn set_ospeed_medium(&'a self, n: PinIndex) -> &Self {
         self.set_ospeed(n, gpio::OSPEEDR::OSPEEDR0::RW::MediumSpeed)
     }
 
+    #[inline]
     pub fn set_ospeed_high(&'a self, n: PinIndex) -> &Self {
         self.set_ospeed(n, gpio::OSPEEDR::OSPEEDR0::RW::HighSpeed)
     }
 
+    #[inline]
     pub fn set_ospeed_veryhigh(&'a self, n: PinIndex) -> &Self {
         self.set_ospeed(n, gpio::OSPEEDR::OSPEEDR0::RW::VeryHighSpeed)
     }
 
+    #[inline]
     pub fn set_af(&'a self, n: PinIndex, af: u32) -> &Self {
         let n = n as u8;
         if n < 8 {
@@ -146,6 +162,7 @@ impl<'a> GPIO {
         self
     }
 
+    #[inline]
     pub fn set_pull(&'a self, n: PinIndex, pull: u32) -> &Self {
         let offset = (n as u8) * 2;
         let mask = 0b11 << offset;
@@ -154,22 +171,27 @@ impl<'a> GPIO {
         self
     }
 
+    #[inline]
     pub fn set_pull_floating(&'a self, n: PinIndex) -> &Self {
         self.set_pull(n, gpio::PUPDR::PUPDR0::RW::Floating)
     }
 
+    #[inline]
     pub fn set_pull_up(&'a self, n: PinIndex) -> &Self {
         self.set_pull(n, gpio::PUPDR::PUPDR0::RW::PullUp)
     }
 
+    #[inline]
     pub fn set_pull_down(&'a self, n: PinIndex) -> &Self {
         self.set_pull(n, gpio::PUPDR::PUPDR0::RW::PullDown)
     }
 
+    #[inline]
     pub fn get_idr(&'a self) -> u32 {
         read_reg!(gpio, self.p, IDR)
     }
 
+    #[inline]
     pub fn get_pin_idr(&'a self, n: PinIndex) -> u32 {
         let n = n as u8;
         (self.get_idr() & (1 << n)) >> n
@@ -236,6 +258,7 @@ impl<'a> Pin<'a> {
         };
     }
 
+    #[inline(always)]
     pub fn set_state(&self, state: PinState) {
         match state {
             PinState::Low => self.set_low(),
@@ -243,6 +266,7 @@ impl<'a> Pin<'a> {
         };
     }
 
+    #[inline(always)]
     pub fn get_state(&self) -> PinState {
         match self.port.get_pin_idr(self.n) {
             0 => PinState::Low,
@@ -251,6 +275,7 @@ impl<'a> Pin<'a> {
         }
     }
 
+    #[inline(always)]
     pub fn is_high(&self) -> bool {
         match self.get_state() {
             PinState::High => true,
@@ -258,6 +283,7 @@ impl<'a> Pin<'a> {
         }
     }
 
+    #[inline(always)]
     pub fn is_low(&self) -> bool {
         match self.get_state() {
             PinState::Low => true,
@@ -265,26 +291,31 @@ impl<'a> Pin<'a> {
         }
     }
 
+    #[inline(always)]
     pub fn toggle(&'a self) -> &Self {
         self.port.toggle(self.n);
         self
     }
 
+    #[inline]
     pub fn set_mode_input(&'a self) -> &Self {
         self.port.set_mode_input(self.n);
         self
     }
 
+    #[inline]
     pub fn set_mode_output(&'a self) -> &Self {
         self.port.set_mode_output(self.n);
         self
     }
 
+    #[inline]
     pub fn set_mode_alternate(&'a self) -> &Self {
         self.port.set_mode_alternate(self.n);
         self
     }
 
+    #[inline]
     pub fn set_mode_analog(&'a self) -> &Self {
         self.port.set_mode_analog(self.n);
         self
@@ -306,56 +337,67 @@ impl<'a> Pin<'a> {
         GPIO::memoise_mode_analog(self.n)
     }
 
+    #[inline]
     pub fn apply_memoised_mode(&'a self, mode: MemoisedMode) -> &Self {
         self.port.apply_memoised_mode(mode);
         self
     }
 
+    #[inline]
     pub fn set_otype_opendrain(&'a self) -> &Self {
         self.port.set_otype_opendrain(self.n);
         self
     }
 
+    #[inline]
     pub fn set_otype_pushpull(&'a self) -> &Self {
         self.port.set_otype_pushpull(self.n);
         self
     }
 
+    #[inline]
     pub fn set_ospeed_low(&'a self) -> &Self {
         self.port.set_ospeed_low(self.n);
         self
     }
 
+    #[inline]
     pub fn set_ospeed_medium(&'a self) -> &Self {
         self.port.set_ospeed_medium(self.n);
         self
     }
 
+    #[inline]
     pub fn set_ospeed_high(&'a self) -> &Self {
         self.port.set_ospeed_high(self.n);
         self
     }
 
+    #[inline]
     pub fn set_ospeed_veryhigh(&'a self) -> &Self {
         self.port.set_ospeed_veryhigh(self.n);
         self
     }
 
+    #[inline]
     pub fn set_af(&'a self, af: u32) -> &Self {
         self.port.set_af(self.n, af);
         self
     }
 
+    #[inline]
     pub fn set_pull_floating(&'a self) -> &Self {
         self.port.set_pull_floating(self.n);
         self
     }
 
+    #[inline]
     pub fn set_pull_up(&'a self) -> &Self {
         self.port.set_pull_up(self.n);
         self
     }
 
+    #[inline]
     pub fn set_pull_down(&'a self) -> &Self {
         self.port.set_pull_down(self.n);
         self
@@ -505,6 +547,7 @@ impl<'a> Pins<'a> {
     }
 
     /// Place SPI pins into high-impedance mode
+    #[inline]
     pub fn high_impedance_mode(&self) {
         self.reset.set_high().set_mode_output();
         self.usart1_rx.set_mode_input();
@@ -517,6 +560,7 @@ impl<'a> Pins<'a> {
     }
 
     /// Place SPI pins into JTAG mode
+    #[inline]
     pub fn jtag_mode(&self) {
         self.reset.set_mode_output();
         self.usart1_rx.set_mode_input();
@@ -529,6 +573,7 @@ impl<'a> Pins<'a> {
     }
 
     /// Place SPI pins into SWD mode
+    #[inline]
     pub fn swd_mode(&self) {
         self.reset.set_mode_output();
         self.usart1_rx.set_mode_alternate();
@@ -541,21 +586,25 @@ impl<'a> Pins<'a> {
     }
 
     /// Disconnect SPI1_MOSI from SWDIO, target drives the bus
+    #[inline]
     pub fn swd_rx(&self) {
         self.spi1_mosi.set_mode_input();
     }
 
     /// Connect SPI1_MOSI to SWDIO, we drive the bus
+    #[inline]
     pub fn swd_tx(&self) {
         self.spi1_mosi.set_mode_alternate();
     }
 
     /// Swap SPI1_CLK pin to direct output mode for manual driving
+    #[inline]
     pub fn swd_clk_direct(&self) {
         self.spi1_clk.set_mode_output();
     }
 
     /// Swap SPI1_CLK pin back to alternate mode for SPI use
+    #[inline]
     pub fn swd_clk_spi(&self) {
         self.spi1_clk.set_mode_alternate();
     }
