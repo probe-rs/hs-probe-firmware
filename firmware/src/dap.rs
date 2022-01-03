@@ -564,6 +564,10 @@ impl<'a> DAP<'a> {
 
         match self.mode {
             Some(DAPMode::SWD) => {
+                // Ensure SWD pins are in the right mode, in case they've been used as outputs
+                // by the SWJ_Pins command.
+                self.pins.swd_clk_spi();
+                self.pins.swd_tx();
                 self.swd.tx_sequence(seq);
             }
             Some(DAPMode::JTAG) => {
