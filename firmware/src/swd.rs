@@ -144,6 +144,7 @@ impl<'a> SWD<'a> {
 
     fn read_inner(&self, apndp: APnDP, a: u8) -> Result<u32> {
         let req = Self::make_request(apndp, RnW::R, a);
+
         self.spi.tx8(req);
         self.spi.wait_busy();
         self.spi.drain();

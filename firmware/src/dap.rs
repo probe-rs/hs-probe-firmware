@@ -472,41 +472,55 @@ impl<'a> DAP<'a> {
         let mask = req.next_u8();
         let wait = req.next_u32();
 
-        // Our pin mapping:
-        // SWDIO/TMS: FLASH_SI
-        // SWCLK/TCK: SCK
-        // SWO/TDO: FLASH_CS
-        // TDI: FPGA_RST
-        // nRESET: FLASH_SO
-        //
-        // SWJ_Pins mapping:
-        // 0: SWCLK/TCK
-        // 1: SWDIO/TMS
-        // 2: TDI
-        // 3: TDO
-        // 5: nTRST
-        // 7: nRESET
-        //
-        // We only support setting nRESET.
-
         const SWCLK_POS: u8 = 0;
         const SWDIO_POS: u8 = 1;
         const TDI_POS: u8 = 2;
         const TDO_POS: u8 = 3;
         const NTRST_POS: u8 = 5;
         const NRESET_POS: u8 = 7;
-        const NRESET_MASK: u8 = 1 << NRESET_POS;
 
-        // If reset bit is in mask, apply output bit to pin
-        if (mask & NRESET_MASK) != 0 {
-            if output & NRESET_MASK != 0 {
-                self.pins.reset.set_high();
-            } else {
-                self.pins.reset.set_low();
+        match self.mode {
+            Some(DAPMode::SWD) => {
+                // In SWD mode, use SPI1 MOSI and CLK for SWDIO/TMS and SWCLK/TCK.
+                // Between transfers those pins are in SPI alternate mode, so swap them
+                // to output to manually set them. They'll be reset to SPI mode by the
+                // next transfer command.
+                if mask & (1 << SWDIO_POS) != 0 {
+                    self.pins.spi1_mosi.set_mode_output();
+                    self.pins.spi1_mosi.set_bool(output & (1 << SWDIO_POS) != 0);
+                }
+                if mask & (1 << SWCLK_POS) != 0 {
+                    self.pins.spi1_clk.set_mode_output();
+                    self.pins.spi1_clk.set_bool(output & (1 << SWCLK_POS) != 0);
+                }
             }
+            Some(DAPMode::JTAG) => {
+                // In JTAG mode, use SPI1 MOSI and SPI2 SLK for SWDIO/TMS and SWCLK/TCK,
+                // and SPI2 MOSI for TDI. Between transfers these pins are already in GPIO
+                // mode, so we don't need to change them.
+                //
+                // TDO is an input pin for JTAG and is ignored to match the DAPLink implementation.
+                if mask & (1 << SWDIO_POS) != 0 {
+                    self.pins.spi1_mosi.set_bool(output & (1 << SWDIO_POS) != 0);
+                }
+                if mask & (1 << SWCLK_POS) != 0 {
+                    self.pins.spi2_clk.set_bool(output & (1 << SWCLK_POS) != 0);
+                }
+                if mask & (1 << TDI_POS) != 0 {
+                    self.pins.spi2_mosi.set_bool(output & (1 << TDI_POS) != 0);
+                }
+            }
+
+            // When not in any mode, ignore JTAG/SWD pins entirely.
+            None => ()
+        };
+
+        // Always allow setting the nRESET pin, which is always in output open-drain mode.
+        if mask & (1 << NRESET_POS) != 0 {
+            self.pins.reset.set_bool(output & (1 << NRESET_POS) != 0);
         }
 
-        // Delay required time in µs
+        // Delay required time in µs (approximate delay).
         cortex_m::asm::delay(42 * wait);
 
         // Read and return pin state
@@ -710,6 +724,11 @@ impl<'a> DAP<'a> {
         let ntransfers = req.next_u8();
         let mut match_mask = 0xFFFF_FFFFu32;
 
+        // Ensure SWD pins are in the right mode, in case they've been used as outputs
+        // by the SWJ_Pins command.
+        self.pins.swd_clk_spi();
+        self.pins.swd_tx();
+
         // Skip two bytes in resp to reserve space for final status,
         // which we update while processing.
         resp.write_u16(0);
@@ -810,6 +829,11 @@ impl<'a> DAP<'a> {
         let apndp = (transfer_req & (1 << 0)) != 0;
         let rnw = (transfer_req & (1 << 1)) != 0;
         let a = (transfer_req & (3 << 2)) >> 2;
+
+        // Ensure SWD pins are in the right mode, in case they've been used as outputs
+        // by the SWJ_Pins command.
+        self.pins.swd_clk_spi();
+        self.pins.swd_tx();
 
         // Skip three bytes in resp to reserve space for final status,
         // which we update while processing.
