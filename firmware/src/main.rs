@@ -90,7 +90,7 @@ fn main() -> ! {
     let syst = stm32ral::syst::SYST::take().unwrap();
     let delay = bsp::delay::Delay::new(syst);
 
-    let swd = swd::SWD::new(&spi1, &pins);
+    let swd = swd::SWD::new(&spi1, &pins, &delay);
     let jtag = jtag::JTAG::new(&spi2, &dma, &pins, &delay);
     let mut dap = dap::DAP::new(swd, jtag, &mut uart1, &pins);
 

@@ -1,7 +1,8 @@
 // Copyright 2019-2020 Adam Greig
 // Dual licensed under the Apache 2.0 and MIT licenses.
 
-use crate::bsp::{gpio::Pins, spi::SPI};
+use crate::bsp::{delay::Delay, gpio::Pins, spi::SPI};
+use core::sync::atomic::{AtomicU32, Ordering};
 use num_enum::IntoPrimitive;
 
 #[derive(Copy, Clone, Debug)]
@@ -27,6 +28,8 @@ pub enum DPRegister {
 pub struct SWD<'a> {
     spi: &'a SPI,
     pins: &'a Pins<'a>,
+    delay: &'a Delay,
+    half_period_ticks: AtomicU32,
 
     wait_retries: usize,
 }
@@ -77,15 +80,20 @@ impl ACK {
 }
 
 impl<'a> SWD<'a> {
-    pub fn new(spi: &'a SPI, pins: &'a Pins) -> Self {
+    pub fn new(spi: &'a SPI, pins: &'a Pins, delay: &'a Delay) -> Self {
         SWD {
             spi,
             pins,
+            delay,
+            half_period_ticks: AtomicU32::new(10000),
             wait_retries: 8,
         }
     }
 
     pub fn set_clock(&self, max_frequency: u32) -> bool {
+        let period = self.delay.calc_period_ticks(max_frequency);
+        self.half_period_ticks.store(period / 2, Ordering::SeqCst);
+
         if let Some(prescaler) = self.spi.calculate_prescaler(max_frequency) {
             self.spi.set_prescaler(prescaler);
             true
@@ -106,12 +114,30 @@ impl<'a> SWD<'a> {
         self.wait_retries = wait_retries;
     }
 
-    pub fn tx_sequence(&self, sequence: &[u8]) {
-        self.pins.swd_tx();
-        for byte in sequence {
-            self.spi.tx8(*byte);
+    pub fn tx_sequence(&self, data: &[u8], mut bits: usize) {
+        self.pins.swd_tx_direct();
+        self.pins.swd_clk_direct();
+
+        let half_period_ticks = self.half_period_ticks.load(Ordering::SeqCst);
+        let mut last = self.delay.get_current();
+        last = self.delay.delay_ticks_from_last(half_period_ticks, last);
+
+        for byte in data {
+            let mut byte = *byte;
+            let frame_bits = core::cmp::min(bits, 8);
+            for _ in 0..frame_bits {
+                let bit = byte & 1;
+                byte >>= 1;
+                self.pins.spi1_mosi.set_bool(bit != 0);
+                self.pins.spi1_clk.set_low();
+                last = self.delay.delay_ticks_from_last(half_period_ticks, last);
+                self.pins.spi1_clk.set_high();
+                last = self.delay.delay_ticks_from_last(half_period_ticks, last);
+            }
+            bits -= frame_bits;
         }
-        self.spi.wait_busy();
+        self.pins.swd_tx();
+        self.pins.swd_clk_spi();
     }
 
     pub fn idle_low(&self) {
@@ -173,7 +199,8 @@ impl<'a> SWD<'a> {
         }
 
         // Read 8x4=32 bits of data and 8x1=8 bits for parity+turnaround+trailing.
-        // Doing a batch of 5 8-bit reads is the quickest option as we keep the FIFO hot.
+        // Doing a batch of 5 8-bit reads is the quickest option as we keep the FIFO
+        // hot.
         let (data, parity) = self.spi.swd_rdata_phase(self.pins);
         let parity = (parity & 1) as u32;
 
