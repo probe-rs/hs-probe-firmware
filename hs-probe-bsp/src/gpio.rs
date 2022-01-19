@@ -591,10 +591,16 @@ impl<'a> Pins<'a> {
         self.spi1_mosi.set_mode_input();
     }
 
-    /// Connect SPI1_MOSI to SWDIO, we drive the bus
+    /// Connect SPI1_MOSI to SWDIO, SPI drives the bus
     #[inline]
     pub fn swd_tx(&self) {
         self.spi1_mosi.set_mode_alternate();
+    }
+
+    /// Connect SPI1_MOSI to SWDIO, manual bitbanging
+    #[inline]
+    pub fn swd_tx_direct(&self) {
+        self.spi1_mosi.set_mode_output();
     }
 
     /// Swap SPI1_CLK pin to direct output mode for manual driving

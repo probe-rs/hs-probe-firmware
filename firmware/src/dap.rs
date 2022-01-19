@@ -564,9 +564,7 @@ impl<'a> DAP<'a> {
 
         match self.mode {
             Some(DAPMode::SWD) => {
-                self.pins.jtag_mode();
-                self.jtag.tms_sequence(seq, nbits);
-                self.pins.swd_mode();
+                self.swd.tx_sequence(seq, nbits);
             }
             Some(DAPMode::JTAG) => {
                 self.jtag.tms_sequence(seq, nbits);
