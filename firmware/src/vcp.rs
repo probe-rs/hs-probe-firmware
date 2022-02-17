@@ -3,8 +3,10 @@
 
 use core::cmp::Ordering;
 
-
-use crate::bsp::{dma::DMA, gpio::{Pins}, rcc::Clocks};
+use crate::{
+    bsp::{dma::DMA, gpio::Pins, rcc::Clocks},
+    VCP_PACKET_SIZE,
+};
 
 use stm32ral::usart;
 use stm32ral::{modify_reg, write_reg};
@@ -34,8 +36,8 @@ pub struct VCP<'a> {
     uart: usart::Instance,
     pins: &'a Pins<'a>,
     dma: &'a DMA,
-    rx_buffer: [u8; 256],
-    tx_buffer: [u8; 256],
+    rx_buffer: [u8; VCP_PACKET_SIZE as usize],
+    tx_buffer: [u8; VCP_PACKET_SIZE as usize],
     last_idx_rx: usize,
     last_idx_tx: usize,
     fck: u32,
@@ -47,8 +49,8 @@ impl<'a> VCP<'a> {
             uart,
             pins,
             dma,
-            rx_buffer: [0; 256],
-            tx_buffer: [0; 256],
+            rx_buffer: [0; VCP_PACKET_SIZE as usize],
+            tx_buffer: [0; VCP_PACKET_SIZE as usize],
             last_idx_rx: 0,
             last_idx_tx: 0,
             fck: 72_000_000,
@@ -226,6 +228,5 @@ impl<'a> VCP<'a> {
         self.tx_buffer[0..len].copy_from_slice(&tx);
         modify_reg!(usart, self.uart, CR3, DMAT: Enabled);
         self.dma.usart2_start_tx_transfer(&self.tx_buffer, len);
-
     }
 }

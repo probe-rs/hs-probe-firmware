@@ -1,5 +1,5 @@
 use crate::app::Request;
-use crate::DAP2_PACKET_SIZE;
+use crate::VCP_PACKET_SIZE;
 use hs_probe_bsp::otg_hs::{UsbBus, UsbBusType};
 use hs_probe_bsp::rcc::Clocks;
 use stm32ral::{otg_hs_device, otg_hs_global, otg_hs_pwrclk, usbphyc};
@@ -171,7 +171,7 @@ impl USB {
                 return r;
             }
 
-            let mut buf = [0; DAP2_PACKET_SIZE as usize];
+            let mut buf = [0; VCP_PACKET_SIZE as usize];
             let serialdata = usb.serial.read(&mut buf);
             match serialdata {
                 Ok(x) => return Some(Request::VCPPacket((buf, x))),
