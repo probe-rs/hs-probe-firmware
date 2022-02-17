@@ -15,7 +15,8 @@ USART2_TX: DMA1, stream 6, channel 4
 */
 
 const SPI_DR_OFFSET: u32 = 0x0C;
-const UART_DR_OFFSET: u32 = 0x24;
+const UART_RDR_OFFSET: u32 = 0x24;
+const UART_TDR_OFFSET: u32 = 0x28;
 
 pub struct DMA {
     dma1: dma::Instance,
@@ -135,7 +136,7 @@ impl DMA {
             dma,
             self.dma2,
             PAR5,
-            stm32ral::usart::USART1 as u32 + UART_DR_OFFSET
+            stm32ral::usart::USART1 as u32 + UART_RDR_OFFSET
         );
 
         // Set up DMA1 stream 5, channel 4 for USART2_RX
@@ -157,7 +158,7 @@ impl DMA {
             dma,
             self.dma1,
             PAR5,
-            stm32ral::usart::USART2 as u32 + UART_DR_OFFSET
+            stm32ral::usart::USART2 as u32 + UART_RDR_OFFSET
         );
 
         // Set up DMA1 stream 6, channel 4 for USART2_TX
@@ -179,7 +180,7 @@ impl DMA {
             dma,
             self.dma1,
             PAR6,
-            stm32ral::usart::USART2 as u32 + UART_DR_OFFSET
+            stm32ral::usart::USART2 as u32 + UART_TDR_OFFSET
         );
     }
 
@@ -285,5 +286,56 @@ impl DMA {
     /// Stop USART1 DMA
     pub fn usart1_stop(&self) {
         modify_reg!(dma, self.dma2, CR5, EN: Disabled);
+    }
+
+    /// Start USART2 reception into provided buffer
+    pub fn usart2_start_rx(&self, rx: &mut [u8]) {
+        write_reg!(
+            dma,
+            self.dma1,
+            HIFCR,
+            CTCIF5: Clear,
+            CHTIF5: Clear,
+            CTEIF5: Clear,
+            CDMEIF5: Clear,
+            CFEIF5: Clear
+        );
+        write_reg!(dma, self.dma1, NDTR5, rx.len() as u32);
+        
+        write_reg!(dma, self.dma1, M0AR5, rx.as_mut_ptr() as u32);
+
+        modify_reg!(dma, self.dma1, CR5, EN: Enabled);
+    }
+
+    /// Return how many bytes are left to transfer for USART2 RX
+    pub fn usart2_rx_ndtr(&self) -> usize {
+        read_reg!(dma, self.dma1, NDTR5) as usize
+    }
+    /// Return how many bytes are left to transfer for USART2 TX
+    pub fn usart2_tx_ndtr(&self) -> usize {
+        read_reg!(dma, self.dma1, NDTR6) as usize
+    }
+
+    /// Start a DMA transfer for USART2 TX
+    pub fn usart2_start_tx_transfer(&self, tx: &[u8], len: usize){
+        write_reg!(
+            dma,
+            self.dma1,
+            HIFCR,
+            CTCIF6: Clear,
+            CHTIF6: Clear,
+            CTEIF6: Clear,
+            CDMEIF6: Clear,
+            CFEIF6: Clear
+        );
+        write_reg!(dma, self.dma1, NDTR6, len as u32);
+        write_reg!(dma, self.dma1, M0AR6, tx.as_ptr() as u32);
+        modify_reg!(dma, self.dma1, CR6, EN: Enabled);
+    }
+
+    /// Stop USART2 DMA
+    pub fn usart2_stop(&self) {
+        modify_reg!(dma, self.dma1, CR5, EN: Disabled);
+        modify_reg!(dma, self.dma1, CR6, EN: Disabled);
     }
 }

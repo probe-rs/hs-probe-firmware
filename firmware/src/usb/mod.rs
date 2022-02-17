@@ -5,7 +5,7 @@ use hs_probe_bsp::rcc::Clocks;
 use stm32ral::{otg_hs_device, otg_hs_global, otg_hs_pwrclk, usbphyc};
 use usb_device::bus::UsbBusAllocator;
 use usb_device::prelude::*;
-use usbd_serial::SerialPort;
+use usbd_serial::{LineCoding, SerialPort};
 
 mod dap_v1;
 mod dap_v2;
@@ -171,9 +171,13 @@ impl USB {
                 return r;
             }
 
-            // Discard data from the serial interface
             let mut buf = [0; DAP2_PACKET_SIZE as usize];
-            let _ = usb.serial.read(&mut buf);
+            let serialdata = usb.serial.read(&mut buf);
+            match serialdata {
+                Ok(x) => return Some(Request::VCPPacket((buf, x))),
+                // discard error?
+                Err(_) => (),
+            }
         }
         None
     }
@@ -204,5 +208,17 @@ impl USB {
     pub fn dap2_stream_swo(&mut self, data: &[u8]) {
         let usb = self.state.as_initialized_mut();
         usb.dap_v2.trace_write(data).expect("trace EP write failed");
+    }
+
+    /// Grab the current LineCoding (UART parameters) from the CDC-ACM stack
+    pub fn serial_line_encoding(&self) -> &LineCoding {
+        let usb = self.state.as_initialized();
+        usb.serial.line_coding()
+    }
+
+    /// Return UART data to host trough USB
+    pub fn serial_return(&mut self, data: &[u8]) {
+        let usb = self.state.as_initialized_mut();
+        usb.serial.write(data).expect("Serial EP write failed");
     }
 }

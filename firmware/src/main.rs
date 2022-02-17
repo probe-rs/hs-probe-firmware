@@ -12,12 +12,14 @@ const GIT_VERSION: &str = git_version!();
 
 const DAP1_PACKET_SIZE: u16 = 64;
 const DAP2_PACKET_SIZE: u16 = 512;
+const VCP_PACKET_SIZE: u16 = 512;
 
 mod app;
 mod dap;
 mod jtag;
 mod swd;
 mod usb;
+mod vcp;
 
 #[pre_init]
 unsafe fn pre_init() {
@@ -56,6 +58,7 @@ fn main() -> ! {
     let spi1 = bsp::spi::SPI::new(stm32ral::spi::SPI1::take().unwrap());
     let spi2 = bsp::spi::SPI::new(stm32ral::spi::SPI2::take().unwrap());
     let mut uart1 = bsp::uart::UART::new(stm32ral::usart::USART1::take().unwrap(), &dma);
+    let uart2 = stm32ral::usart::USART2::take().unwrap();
 
     let _gpioa = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOA::take().unwrap());
     let gpiob = bsp::gpio::GPIO::new(stm32ral::gpio::GPIOB::take().unwrap());
@@ -93,9 +96,12 @@ fn main() -> ! {
     let swd = swd::SWD::new(&spi1, &pins, &delay);
     let jtag = jtag::JTAG::new(&spi2, &dma, &pins, &delay);
     let mut dap = dap::DAP::new(swd, jtag, &mut uart1, &pins);
+    let mut vcp = vcp::VCP::new(uart2, &pins, &dma);
 
     // Create App instance with the HAL instances
-    let mut app = app::App::new(&rcc, &dma, &pins, &spi1, &spi2, &mut usb, &mut dap, &delay);
+    let mut app = app::App::new(
+        &rcc, &dma, &pins, &spi1, &spi2, &mut usb, &mut dap, &mut vcp, &delay,
+    );
 
     rprintln!("Starting...");
 
