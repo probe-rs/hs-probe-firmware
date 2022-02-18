@@ -115,8 +115,6 @@ impl<'a> VCP<'a> {
     pub fn rx_bytes_available(&self) -> usize {
         // length of the buffer minus the remainder of the dma transfer
         let dma_idx = self.rx_buffer.len() - self.dma.usart2_rx_ndtr();
-        cortex_m::asm::dsb();
-        cortex_m::asm::dmb();
         if dma_idx >= self.last_idx_rx {
             dma_idx - self.last_idx_rx
         } else {
@@ -137,9 +135,6 @@ impl<'a> VCP<'a> {
         // processing we won't get out of sync and will handle the new
         // data next time read() is called.
         let dma_idx = self.rx_buffer.len() - self.dma.usart2_rx_ndtr();
-        cortex_m::asm::dsb();
-        cortex_m::asm::dmb();
-        //rprintln!("dmaidx: {}", dma_idx);
         match dma_idx.cmp(&self.last_idx_rx) {
             Ordering::Equal => {
                 // No action required if no data has been received.

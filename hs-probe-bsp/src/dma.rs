@@ -326,11 +326,14 @@ impl DMA {
             CDMEIF6: Clear,
             CFEIF6: Clear
         );
-        cortex_m::asm::dsb();
-        cortex_m::asm::dmb();
+
         modify_reg!(dma, self.dma1, CR6, EN: Disabled);
         write_reg!(dma, self.dma1, NDTR6, len as u32);
         write_reg!(dma, self.dma1, M0AR6, tx.as_ptr() as u32);
+        // This barrier guarantees that when the transfer starts,
+        // any store done to RAM will be drained from the store
+        // buffer of the M7.
+        cortex_m::asm::dsb();
         modify_reg!(dma, self.dma1, CR6, EN: Enabled);
     }
 
