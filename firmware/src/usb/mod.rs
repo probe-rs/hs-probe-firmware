@@ -145,7 +145,7 @@ impl USB {
     /// This function will clear the interrupt bits of all interrupts
     /// it processes; if any are unprocessed the USB interrupt keeps
     /// triggering until all are processed.
-    pub fn interrupt(&mut self) -> Option<Request> {
+    pub fn interrupt(&mut self, vcp_idle: bool) -> Option<Request> {
         let usb = self.state.as_initialized_mut();
         if usb.device.poll(&mut [
             &mut usb.winusb,
@@ -171,12 +171,16 @@ impl USB {
                 return r;
             }
 
-            let mut buf = [0; VCP_PACKET_SIZE as usize];
-            let serialdata = usb.serial.read(&mut buf);
-            match serialdata {
-                Ok(x) => return Some(Request::VCPPacket((buf, x))),
-                // discard error?
-                Err(_) => (),
+            if vcp_idle {
+                let mut buf = [0; VCP_PACKET_SIZE as usize];
+                let serialdata = usb.serial.read(&mut buf);
+                match serialdata {
+                    Ok(x) => {
+                        return Some(Request::VCPPacket((buf, x)));
+                    }
+                    // discard error?
+                    Err(_e) => (),
+                }
             }
         }
         None

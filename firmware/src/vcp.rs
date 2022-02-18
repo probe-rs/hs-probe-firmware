@@ -1,4 +1,4 @@
-// Copyright 2019-2022 Alexis Marquet   
+// Copyright 2019-2022 Alexis Marquet
 // Dual licensed under the Apache 2.0 and MIT licenses.
 
 use core::cmp::Ordering;
@@ -57,20 +57,11 @@ impl<'a> VCP<'a> {
         }
     }
 
-
     /// Call with the system clock speeds to configure peripherals that require timing information.
     ///
     /// Currently this only configures the pins & DMA RX
     pub fn setup(&mut self, clocks: &Clocks) {
         self.fck = clocks.pclk1();
-
-        self.pins.usart2_rx.set_ospeed_veryhigh();
-        self.pins.usart2_rx.set_otype_pushpull();
-        self.pins.usart2_rx.set_pull_up();
-        self.pins.usart2_rx.set_mode_alternate();
-        self.pins.usart2_rx.set_af(7);
-
-    
 
         self.pins.usart2_tx.set_ospeed_veryhigh();
         self.pins.usart2_tx.set_otype_pushpull();
@@ -78,18 +69,22 @@ impl<'a> VCP<'a> {
         self.pins.usart2_tx.set_mode_alternate();
         self.pins.usart2_tx.set_af(7);
 
+        self.pins.usart2_rx.set_ospeed_veryhigh();
+        self.pins.usart2_rx.set_otype_pushpull();
+        self.pins.usart2_rx.set_pull_up();
+        self.pins.usart2_rx.set_mode_alternate();
+        self.pins.usart2_rx.set_af(7);
 
-        self.dma
-        .usart2_start_rx(&mut self.rx_buffer);
+        self.dma.usart2_start_rx(&mut self.rx_buffer);
     }
 
     /// Start the VCP function.
-    /// 
-    /// This enables both TX & RX. 
+    ///
+    /// This enables both TX & RX.
     pub fn start(&mut self) {
         self.last_idx_rx = 0;
         self.last_idx_tx = 0;
-        write_reg!(usart, self.uart, CR3, DMAR: Enabled);
+        write_reg!(usart, self.uart, CR3, DMAR: Enabled, DMAT: Enabled);
 
         write_reg!(
             usart,
@@ -104,7 +99,14 @@ impl<'a> VCP<'a> {
 
     /// Disable UART.
     pub fn stop(&self) {
-        modify_reg!(usart, self.uart, CR1, UE: Disabled);
+        modify_reg!(
+            usart,
+            self.uart,
+            CR1,
+            RE: Disabled,
+            TE: Disabled,
+            UE: Disabled
+        );
     }
 
     /// Fetch current number of bytes available.
@@ -113,6 +115,8 @@ impl<'a> VCP<'a> {
     pub fn rx_bytes_available(&self) -> usize {
         // length of the buffer minus the remainder of the dma transfer
         let dma_idx = self.rx_buffer.len() - self.dma.usart2_rx_ndtr();
+        cortex_m::asm::dsb();
+        cortex_m::asm::dmb();
         if dma_idx >= self.last_idx_rx {
             dma_idx - self.last_idx_rx
         } else {
@@ -133,7 +137,9 @@ impl<'a> VCP<'a> {
         // processing we won't get out of sync and will handle the new
         // data next time read() is called.
         let dma_idx = self.rx_buffer.len() - self.dma.usart2_rx_ndtr();
-
+        cortex_m::asm::dsb();
+        cortex_m::asm::dmb();
+        //rprintln!("dmaidx: {}", dma_idx);
         match dma_idx.cmp(&self.last_idx_rx) {
             Ordering::Equal => {
                 // No action required if no data has been received.
@@ -181,9 +187,9 @@ impl<'a> VCP<'a> {
     }
 
     /// Setup the USART line config.
-    /// 
+    ///
     /// This should be done between a `stop()` and a `start` call since
-    /// configuring this requires the UE bit to be `0b0`. 
+    /// configuring this requires the UE bit to be `0b0`.
     pub fn set_config(&mut self, coding: VcpConfig) {
         // Find closest divider which is also an even integer >= 16.
         // The baud rate is (2*fck)/BRR.
@@ -214,19 +220,22 @@ impl<'a> VCP<'a> {
         }
 
         // configure parity type
-        match coding.parity_type{
+        match coding.parity_type {
             ParityType::None => modify_reg!(usart, self.uart, CR1, PCE: 0),
             ParityType::Odd => modify_reg!(usart, self.uart, CR1, PCE:1, PS: 1),
             ParityType::Event => modify_reg!(usart, self.uart, CR1, PCE:1, PS: 0),
-            ParityType::Mark => (),     // unsupported?
-            ParityType::Space => (),    // unsupported?
+            ParityType::Mark => (),  // unsupported?
+            ParityType::Space => (), // unsupported?
         }
     }
 
+    /// Check state of TX Dma transfer
+    pub fn is_tx_idle(&self) -> bool {
+        self.dma.usart2_tx_ndtr() == 0
+    }
     /// Start DMA transfer from buffer to TX Shift register.
     pub fn write(&mut self, tx: &[u8], len: usize) {
         self.tx_buffer[0..len].copy_from_slice(&tx);
-        modify_reg!(usart, self.uart, CR3, DMAT: Enabled);
         self.dma.usart2_start_tx_transfer(&self.tx_buffer, len);
     }
 }

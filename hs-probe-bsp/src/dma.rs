@@ -301,9 +301,7 @@ impl DMA {
             CFEIF5: Clear
         );
         write_reg!(dma, self.dma1, NDTR5, rx.len() as u32);
-        
         write_reg!(dma, self.dma1, M0AR5, rx.as_mut_ptr() as u32);
-
         modify_reg!(dma, self.dma1, CR5, EN: Enabled);
     }
 
@@ -317,7 +315,7 @@ impl DMA {
     }
 
     /// Start a DMA transfer for USART2 TX
-    pub fn usart2_start_tx_transfer(&self, tx: &[u8], len: usize){
+    pub fn usart2_start_tx_transfer(&self, tx: &[u8], len: usize) {
         write_reg!(
             dma,
             self.dma1,
@@ -328,6 +326,9 @@ impl DMA {
             CDMEIF6: Clear,
             CFEIF6: Clear
         );
+        cortex_m::asm::dsb();
+        cortex_m::asm::dmb();
+        modify_reg!(dma, self.dma1, CR6, EN: Disabled);
         write_reg!(dma, self.dma1, NDTR6, len as u32);
         write_reg!(dma, self.dma1, M0AR6, tx.as_ptr() as u32);
         modify_reg!(dma, self.dma1, CR6, EN: Enabled);

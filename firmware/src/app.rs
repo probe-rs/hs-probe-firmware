@@ -92,7 +92,9 @@ impl<'a> App<'a> {
     }
 
     pub fn poll(&mut self) {
-        if let Some(req) = self.usb.interrupt() {
+        // we need to inform the usb mod if we would be ready to receive
+        // new acm data would there be some available.
+        if let Some(req) = self.usb.interrupt(self.vcp.is_tx_idle()) {
             self.process_request(req);
         }
 
@@ -108,7 +110,7 @@ impl<'a> App<'a> {
 
         // Compare potentially new line encoding for vcp
         // There is probably a better way to do it but i could
-        // not find a way to be informed of a new encoding by the 
+        // not find a way to be informed of a new encoding by the
         // acm usb stack.
         let new_line_coding = self.usb.serial_line_encoding();
         let config = VcpConfig {
