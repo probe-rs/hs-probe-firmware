@@ -113,7 +113,7 @@ impl USB {
                     .manufacturer("Probe-rs development team")
                     .product("HS-Probe with CMSIS-DAP Support")
                     .serial_number(serial_string)
-                    .device_class(0)
+                    .composite_with_iads()
                     .max_packet_size_0(64)
                     .max_power(500)
                     .build();

@@ -46,6 +46,15 @@ const IF2_MS_PROPERTIES_OS_DESCRIPTOR: [u8; 142] = [
 pub struct MicrosoftDescriptors;
 
 impl<B: UsbBus> UsbClass<B> for MicrosoftDescriptors {
+    fn get_string(&self, index: StringIndex, _lang_id: u16) -> Option<&str> {
+        // Special string to support Microsoft OS Desriptors
+        if u8::from(index) == 0xee {
+            Some("MSFT100A") // MSFT100 + vendor code (1 byte)
+        } else {
+            None
+        }
+    }
+
     fn control_in(&mut self, xfer: ControlIn<B>) {
         let req = xfer.request();
         if req.request_type != RequestType::Vendor {
@@ -56,7 +65,7 @@ impl<B: UsbBus> UsbClass<B> for MicrosoftDescriptors {
             match OSFeatureDescriptorType::try_from(req.index) {
                 Ok(OSFeatureDescriptorType::CompatibleID) => {
                     // Handle request for an Extended Compatible ID Descriptor.
-                    // Interface number is ignored as there is only one device-wide
+                    // Interface  is ignored as there is only one device-wide
                     // Compatible ID Descriptor.
                     xfer.accept_with_static(&MS_COMPATIBLE_ID_DESCRIPTOR).ok();
                 }
