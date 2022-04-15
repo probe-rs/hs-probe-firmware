@@ -11,7 +11,19 @@ const GET_OS_FEATURE: u8 = b'A';
 pub enum OSFeatureDescriptorType {
     CompatibleID = 4,
     Properties = 5,
+    Descriptor = 7,
 }
+
+const LEN_FIRST: u8 = 11;
+const LEN_LAST: u8 = 0x0;
+
+const MS_OS_DESCRIPTOR: [u8; 11] = [
+    0xa, 0x00, // Length 10 bytes
+    0x00, 0x00, // HEADER_DESCRIPTOR
+    0x00, 0x00, 0x03, 0x06, // Windows version
+    0x01, // Number of sections
+    LEN_FIRST, LEN_LAST,
+];
 
 const MS_COMPATIBLE_ID_DESCRIPTOR: [u8; 40] = [
     0x28, 0x00, 0x00, 0x00, // Length 40 bytes
@@ -46,6 +58,7 @@ const IF2_MS_PROPERTIES_OS_DESCRIPTOR: [u8; 142] = [
 pub struct MicrosoftDescriptors;
 
 impl<B: UsbBus> UsbClass<B> for MicrosoftDescriptors {
+    /*
     fn get_string(&self, index: StringIndex, _lang_id: u16) -> Option<&str> {
         // Special string to support Microsoft OS Desriptors
         if u8::from(index) == 0xee {
@@ -54,6 +67,7 @@ impl<B: UsbBus> UsbClass<B> for MicrosoftDescriptors {
             None
         }
     }
+    */
 
     fn control_in(&mut self, xfer: ControlIn<B>) {
         let req = xfer.request();
@@ -61,7 +75,7 @@ impl<B: UsbBus> UsbClass<B> for MicrosoftDescriptors {
             return;
         }
 
-        if req.request == GET_OS_FEATURE {
+        if req.request == 0x41 {
             match OSFeatureDescriptorType::try_from(req.index) {
                 Ok(OSFeatureDescriptorType::CompatibleID) => {
                     // Handle request for an Extended Compatible ID Descriptor.
@@ -80,6 +94,9 @@ impl<B: UsbBus> UsbClass<B> for MicrosoftDescriptors {
                             xfer.reject().ok();
                         }
                     }
+                }
+                Ok(OSFeatureDescriptorType::Descriptor) => {
+                    xfer.accept_with_static(&MS_OS_DESCRIPTOR).ok();
                 }
                 _ => {
                     xfer.reject().ok();
