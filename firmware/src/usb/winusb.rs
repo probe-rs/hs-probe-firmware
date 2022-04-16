@@ -14,15 +14,191 @@ pub enum OSFeatureDescriptorType {
     Descriptor = 7,
 }
 
-const LEN_FIRST: u8 = 11;
+const LEN_FIRST: u8 = 168;
 const LEN_LAST: u8 = 0x0;
 
-const MS_OS_DESCRIPTOR: [u8; 11] = [
-    0xa, 0x00, // Length 10 bytes
-    0x00, 0x00, // HEADER_DESCRIPTOR
-    0x00, 0x00, 0x03, 0x06, // Windows version
-    0x01, // Number of sections
-    LEN_FIRST, LEN_LAST,
+const VENDOR_CODE: u8 = 0x41;
+
+enum MsDescriptorTypes {
+    Header = 0x0,
+    HeaderConfiguration = 0x1,
+    HeaderFunction = 0x2,
+    CompatibleId = 0x3,
+    RegistryProperty = 0x4,
+}
+
+const MS_OS_DESCRIPTOR: [u8; LEN_FIRST as usize] = [
+    0xa,
+    0x00, // Length 10 bytes
+    MsDescriptorTypes::Header as u8,
+    0x00, // HEADER_DESCRIPTOR
+    0x00,
+    0x00,
+    0x03,
+    0x06, // Windows version
+    LEN_FIRST,
+    LEN_LAST, // Total descriptor length
+    // Function header,
+    0x8,
+    0x0, // Length 8
+    MsDescriptorTypes::HeaderFunction as u8,
+    0x00,
+    0x1, // First interface (dap v2 -> 1)
+    0x0, // reserved
+    LEN_FIRST - 0xa,
+    0x00, // Subset length, including header
+    // compatible ID descriptor
+    20,
+    0x00, // length 20
+    MsDescriptorTypes::CompatibleId as u8,
+    0x00,
+    b'W',
+    b'I',
+    b'N',
+    b'U',
+    b'S',
+    b'B',
+    0x00,
+    0x00, // Compatible ID: 8 bytes ASCII
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00, // Sub-Compatible ID: 8 bytes ASCII
+    // Registry property
+    78 + 2 + 42 + 2 + 2 + 2 + 2,
+    0x00, // length
+    MsDescriptorTypes::RegistryProperty as u8,
+    0x00,
+    7,
+    0, // Data type: multi sz
+    42,
+    0x00, // property name length,
+    b'D',
+    0,
+    b'e',
+    0,
+    b'v',
+    0,
+    b'i',
+    0,
+    b'c',
+    0,
+    b'e',
+    0,
+    b'I',
+    0,
+    b'n',
+    0,
+    b't',
+    0,
+    b'e',
+    0,
+    b'r',
+    0,
+    b'f',
+    0,
+    b'a',
+    0,
+    b'c',
+    0,
+    b'e',
+    0,
+    b'G',
+    0,
+    b'U',
+    0,
+    b'I',
+    0,
+    b'D',
+    0,
+    b's',
+    0,
+    0,
+    0,
+    78,
+    0x00, // data length
+    b'{',
+    0,
+    b'C',
+    0,
+    b'D',
+    0,
+    b'B',
+    0,
+    b'3',
+    0,
+    b'B',
+    0,
+    b'5',
+    0,
+    b'A',
+    0,
+    b'D',
+    0,
+    b'-',
+    0,
+    b'2',
+    0,
+    b'9',
+    0,
+    b'3',
+    0,
+    b'B',
+    0,
+    b'-',
+    0,
+    b'4',
+    0,
+    b'6',
+    0,
+    b'6',
+    0,
+    b'3',
+    0,
+    b'-',
+    0,
+    b'A',
+    0,
+    b'A',
+    0,
+    b'3',
+    0,
+    b'6',
+    0,
+    b'-',
+    0,
+    b'1',
+    0,
+    b'A',
+    0,
+    b'A',
+    0,
+    b'E',
+    0,
+    b'4',
+    0,
+    b'6',
+    0,
+    b'4',
+    0,
+    b'6',
+    0,
+    b'3',
+    0,
+    b'7',
+    0,
+    b'7',
+    0,
+    b'6',
+    0,
+    b'}',
+    0,
+    0,
+    0,
 ];
 
 const MS_COMPATIBLE_ID_DESCRIPTOR: [u8; 40] = [
@@ -69,13 +245,54 @@ impl<B: UsbBus> UsbClass<B> for MicrosoftDescriptors {
     }
     */
 
+    fn get_bos_descriptors(&self, writer: &mut BosWriter) -> usb_device::Result<()> {
+        writer.capability(
+            5,
+            &[
+                0, // reserved
+                0xdf,
+                0x60,
+                0xdd,
+                0xd8,
+                0x89,
+                0x45,
+                0xc7,
+                0x4c,
+                0x9c,
+                0xd2,
+                0x65,
+                0x9d,
+                0x9e,
+                0x64,
+                0x8A,
+                0x9f, // platform capability UUID , Microsoft OS 2.0 platform compabitility
+                0x00,
+                0x00,
+                0x03,
+                0x06, // Minimum compatible Windows version (8.1)
+                LEN_FIRST,
+                LEN_LAST, // desciptor set total len ,
+                VENDOR_CODE,
+                0x0, // Device does not support alternate enumeration
+            ],
+        )
+    }
+
     fn control_in(&mut self, xfer: ControlIn<B>) {
         let req = xfer.request();
         if req.request_type != RequestType::Vendor {
             return;
         }
 
-        if req.request == 0x41 {
+        // Check if the ve
+        if req.request == VENDOR_CODE {
+            if req.index == 0x7 {
+                xfer.accept_with_static(&MS_OS_DESCRIPTOR).ok();
+            } else {
+                xfer.reject().ok();
+            }
+
+            /*
             match OSFeatureDescriptorType::try_from(req.index) {
                 Ok(OSFeatureDescriptorType::CompatibleID) => {
                     // Handle request for an Extended Compatible ID Descriptor.
@@ -102,6 +319,7 @@ impl<B: UsbBus> UsbClass<B> for MicrosoftDescriptors {
                     xfer.reject().ok();
                 }
             }
+            */
         }
     }
 }

@@ -3,12 +3,6 @@ use crate::DAP2_PACKET_SIZE;
 use usb_device::class_prelude::*;
 use usb_device::Result;
 
-// This should be the same as in "MSFT100A", which is returned
-const VENDOR_CODE: u8 = 0x41;
-
-const TOTAL_DESCRIPTOR_LEN_FIRST: u8 = 11;
-const TOTAL_DESCRIPTOR_LEN_LAST: u8 = 0;
-
 pub struct CmsisDapV2<'a, B: UsbBus> {
     interface: InterfaceNumber,
     name: StringIndex,
@@ -97,39 +91,6 @@ impl<B: UsbBus> UsbClass<B> for CmsisDapV2<'_, B> {
         } else {
             None
         }
-    }
-
-    fn get_bos_descriptors(&self, writer: &mut BosWriter) -> Result<()> {
-        writer.capability(
-            5,
-            &[
-                0, // reserved
-                0xdf,
-                0x60,
-                0xdd,
-                0xd8,
-                0x89,
-                0x45,
-                0x4c,
-                0xc7,
-                0x9c,
-                0xd2,
-                0x65,
-                0x9d,
-                0x9e,
-                0x64,
-                0x8A,
-                0x9f, // platform capability UUID , Microsoft OS 2.0 platform compabitility
-                0x00,
-                0x00,
-                0x03,
-                0x06, // Minimum compatible Windows version (8.1)
-                TOTAL_DESCRIPTOR_LEN_FIRST,
-                TOTAL_DESCRIPTOR_LEN_LAST, // desciptor set total len (0x14A),
-                VENDOR_CODE,
-                0x0, // Device does not support alternate enumeration
-            ],
-        )
     }
 
     fn reset(&mut self) {
