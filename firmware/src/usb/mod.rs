@@ -104,9 +104,9 @@ impl USB {
                 let usb_bus = USB_BUS.as_ref().unwrap();
 
                 let winusb = MicrosoftDescriptors;
+                let serial = SerialPort::new(&usb_bus);
                 let dap_v1 = CmsisDapV1::new(&usb_bus);
                 let dap_v2 = CmsisDapV2::new(&usb_bus);
-                let serial = SerialPort::new(&usb_bus);
                 let dfu = DfuRuntime::new(&usb_bus);
 
                 let device = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x1209, 0x4853))
@@ -149,9 +149,9 @@ impl USB {
         let usb = self.state.as_initialized_mut();
         if usb.device.poll(&mut [
             &mut usb.winusb,
+            &mut usb.serial,
             &mut usb.dap_v1,
             &mut usb.dap_v2,
-            &mut usb.serial,
             &mut usb.dfu,
         ]) {
             let old_state = usb.device_state;

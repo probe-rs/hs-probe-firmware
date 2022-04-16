@@ -43,7 +43,7 @@ const MS_OS_DESCRIPTOR: [u8; LEN_FIRST as usize] = [
     0x0, // Length 8
     MsDescriptorTypes::HeaderFunction as u8,
     0x00,
-    0x1, // First interface (dap v2 -> 1)
+    0x2, // First interface (dap v2 -> 1)
     0x0, // reserved
     LEN_FIRST - 0xa,
     0x00, // Subset length, including header
