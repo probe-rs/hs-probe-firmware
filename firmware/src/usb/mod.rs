@@ -116,6 +116,7 @@ impl USB {
                     .composite_with_iads()
                     .max_packet_size_0(64)
                     .max_power(500)
+                    .device_release(0x11)
                     .build();
                 let device_state = device.state();
 
