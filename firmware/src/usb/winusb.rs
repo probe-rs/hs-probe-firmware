@@ -14,10 +14,12 @@ pub enum OSFeatureDescriptorType {
     Descriptor = 7,
 }
 
-const LEN_FIRST: u8 = 168;
+const LEN_FIRST: u8 = 170;
 const LEN_LAST: u8 = 0x0;
 
 const VENDOR_CODE: u8 = 0x41;
+
+const DAP_V2_INTERFACE: u8 = 3;
 
 enum MsDescriptorTypes {
     Header = 0x0,
@@ -43,8 +45,8 @@ const MS_OS_DESCRIPTOR: [u8; LEN_FIRST as usize] = [
     0x0, // Length 8
     MsDescriptorTypes::HeaderFunction as u8,
     0x00,
-    0x2, // First interface (dap v2 -> 1)
-    0x0, // reserved
+    DAP_V2_INTERFACE, // First interface (dap v2 -> 1)
+    0x0,              // reserved
     LEN_FIRST - 0xa,
     0x00, // Subset length, including header
     // compatible ID descriptor
@@ -69,7 +71,7 @@ const MS_OS_DESCRIPTOR: [u8; LEN_FIRST as usize] = [
     0x00,
     0x00, // Sub-Compatible ID: 8 bytes ASCII
     // Registry property
-    78 + 2 + 42 + 2 + 2 + 2 + 2,
+    80 + 2 + 42 + 2 + 2 + 2 + 2,
     0x00, // length
     MsDescriptorTypes::RegistryProperty as u8,
     0x00,
@@ -119,7 +121,7 @@ const MS_OS_DESCRIPTOR: [u8; LEN_FIRST as usize] = [
     0,
     0,
     0,
-    78,
+    80,
     0x00, // data length
     b'{',
     0,
@@ -196,6 +198,8 @@ const MS_OS_DESCRIPTOR: [u8; LEN_FIRST as usize] = [
     b'6',
     0,
     b'}',
+    0,
+    0,
     0,
     0,
     0,

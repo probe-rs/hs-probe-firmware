@@ -48,22 +48,8 @@ impl<B: UsbBus> CmsisDapV1<'_, B> {
         CmsisDapV1 {
             interface: alloc.interface(),
             name: alloc.string(),
-            read_ep: alloc
-                .alloc(
-                    Some(EndpointAddress::from(0x01)),
-                    EndpointType::Interrupt,
-                    DAP1_PACKET_SIZE,
-                    1,
-                )
-                .expect("alloc_ep failed"),
-            write_ep: alloc
-                .alloc(
-                    Some(EndpointAddress::from(0x81)),
-                    EndpointType::Interrupt,
-                    DAP1_PACKET_SIZE,
-                    1,
-                )
-                .expect("alloc_ep failed"),
+            read_ep: alloc.interrupt(DAP1_PACKET_SIZE, 1),
+            write_ep: alloc.interrupt(DAP1_PACKET_SIZE, 1),
         }
     }
 
