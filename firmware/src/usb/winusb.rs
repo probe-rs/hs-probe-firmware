@@ -14,12 +14,13 @@ pub enum OSFeatureDescriptorType {
     Descriptor = 7,
 }
 
-const LEN_FIRST: u8 = 170;
+const LEN_FIRST: u8 = 198;
 const LEN_LAST: u8 = 0x0;
 
 const VENDOR_CODE: u8 = 0x41;
 
 const DAP_V2_INTERFACE: u8 = 3;
+const DFU_INTERFACE: u8 = 4;
 
 enum MsDescriptorTypes {
     Header = 0x0,
@@ -47,7 +48,7 @@ const MS_OS_DESCRIPTOR: [u8; LEN_FIRST as usize] = [
     0x00,
     DAP_V2_INTERFACE, // First interface (dap v2 -> 1)
     0x0,              // reserved
-    LEN_FIRST - 0xa,
+    8 + 20 + 132,
     0x00, // Subset length, including header
     // compatible ID descriptor
     20,
@@ -203,6 +204,36 @@ const MS_OS_DESCRIPTOR: [u8; LEN_FIRST as usize] = [
     0,
     0,
     0,
+    // Function header,
+    0x8,
+    0x0, // Length 8
+    MsDescriptorTypes::HeaderFunction as u8,
+    0x00,
+    DFU_INTERFACE, // First interface (dap v2 -> 1)
+    0x0,           // reserved
+    8 + 20,        // Header + compatible ID
+    0x00,          // Subset length, including header
+    // compatible ID descriptor
+    20,
+    0x00, // length 20
+    MsDescriptorTypes::CompatibleId as u8,
+    0x00,
+    b'W',
+    b'I',
+    b'N',
+    b'U',
+    b'S',
+    b'B',
+    0x00,
+    0x00, // Compatible ID: 8 bytes ASCII
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00, // Sub-Compatible ID: 8 bytes ASCII
 ];
 
 const MS_COMPATIBLE_ID_DESCRIPTOR: [u8; 40] = [
