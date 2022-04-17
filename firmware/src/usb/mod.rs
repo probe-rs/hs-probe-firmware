@@ -104,6 +104,9 @@ impl USB {
                 let usb_bus = USB_BUS.as_ref().unwrap();
 
                 let winusb = MicrosoftDescriptors;
+
+                // Order of these calls is important, if the interface numbers for CmsisDapV2 or DfuRuntime change,
+                // definitions in winusb.rs (DAP_V2_INTERFACE, DFU_INTERFACE) have to be adapted!
                 let serial = SerialPort::new(&usb_bus);
                 let dap_v1 = CmsisDapV1::new(&usb_bus);
                 let dap_v2 = CmsisDapV2::new(&usb_bus);
