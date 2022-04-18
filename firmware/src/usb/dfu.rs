@@ -1,6 +1,6 @@
-use usb_device::class_prelude::*;
 use usb_device::control::{Recipient, RequestType};
 use usb_device::Result;
+use usb_device::{class_prelude::*, device};
 
 #[allow(unused)]
 mod request {
@@ -15,19 +15,28 @@ mod request {
 
 pub struct DfuRuntime {
     interface: InterfaceNumber,
+    name: StringIndex,
 }
 
 impl DfuRuntime {
     pub fn new<B: UsbBus>(alloc: &UsbBusAllocator<B>) -> DfuRuntime {
         DfuRuntime {
             interface: alloc.interface(),
+            name: alloc.string(),
         }
     }
 }
 
 impl<B: UsbBus> UsbClass<B> for DfuRuntime {
     fn get_configuration_descriptors(&self, writer: &mut DescriptorWriter) -> Result<()> {
-        writer.interface(self.interface, 0xFE, 1, 1)?;
+        writer.interface_alt(
+            self.interface,
+            device::DEFAULT_ALTERNATE_SETTING,
+            0xFE,
+            1,
+            1,
+            Some(self.name),
+        )?;
 
         // DFU Functional Descriptor
         writer.write(
@@ -41,6 +50,14 @@ impl<B: UsbBus> UsbClass<B> for DfuRuntime {
         )?;
 
         Ok(())
+    }
+
+    fn get_string(&self, index: StringIndex, _lang_id: u16) -> Option<&str> {
+        if index == self.name {
+            Some("HS-Probe DFU")
+        } else {
+            None
+        }
     }
 
     fn control_in(&mut self, xfer: ControlIn<B>) {

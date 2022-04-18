@@ -27,6 +27,22 @@ dfu-util -a 0 -s 0x08000000:leave -D firmware.bin
 
 It will automatically restart into DFU mode and load the firmware.
 
+### Windows
+
+Under Windows, the firmware update does not work out of the box. The first time that `dfu-util` is used, the 
+probe will reboot into the bootloader, but the driver for the `STM32 BOOTLOADER` will be missing.
+
+To fix this, [Zadig](https://zadig.akeo.ie/) should be used to install the `WinUSB` driver for the `STM32 BOOTLOADER` device.
+Afterwards, `dfu-util` should be able to update the firmware.
+
+### Recovery
+
+If the probe does not appear as a USB device, it is possible to force it to boot into the bootloader. For this, the two pins indicated
+by the white line on top of the PCB need to be shorted together, while pluggin in the probe.
+
+If succesful, a `STM32 BOOTLOADER` device will appear which can be used to update the probe firmware using `dfu-util`.
+
+
 ## Feature flags
 
 The following feature flags exists:

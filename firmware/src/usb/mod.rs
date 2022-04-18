@@ -104,18 +104,22 @@ impl USB {
                 let usb_bus = USB_BUS.as_ref().unwrap();
 
                 let winusb = MicrosoftDescriptors;
+
+                // Order of these calls is important, if the interface numbers for CmsisDapV2 or DfuRuntime change,
+                // definitions in winusb.rs (DAP_V2_INTERFACE, DFU_INTERFACE) have to be adapted!
+                let serial = SerialPort::new(&usb_bus);
                 let dap_v1 = CmsisDapV1::new(&usb_bus);
                 let dap_v2 = CmsisDapV2::new(&usb_bus);
-                let serial = SerialPort::new(&usb_bus);
                 let dfu = DfuRuntime::new(&usb_bus);
 
                 let device = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x1209, 0x4853))
                     .manufacturer("Probe-rs development team")
                     .product("HS-Probe with CMSIS-DAP Support")
                     .serial_number(serial_string)
-                    .device_class(0)
+                    .composite_with_iads()
                     .max_packet_size_0(64)
                     .max_power(500)
+                    .device_release(0x11)
                     .build();
                 let device_state = device.state();
 
@@ -149,9 +153,9 @@ impl USB {
         let usb = self.state.as_initialized_mut();
         if usb.device.poll(&mut [
             &mut usb.winusb,
+            &mut usb.serial,
             &mut usb.dap_v1,
             &mut usb.dap_v2,
-            &mut usb.serial,
             &mut usb.dfu,
         ]) {
             let old_state = usb.device_state;
