@@ -424,7 +424,8 @@ impl<B: UsbBus> UsbClass<B> for MicrosoftDescriptors {
             return;
         }
 
-        // Check if the ve
+        // The Microsoft OS descriptors are requested with the vendor code which
+        // is returned in the BOS descriptor.
         if req.request == VENDOR_CODE {
             if req.index == 0x7 {
                 xfer.accept_with_static(&MS_OS_DESCRIPTOR).ok();
