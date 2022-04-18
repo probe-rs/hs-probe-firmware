@@ -34,15 +34,15 @@ enum MsDescriptorTypes {
     RegistryProperty = 0x4,
 }
 
-/// Micorosft OS 2.0 descriptor, according to https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/microsoft-os-2-0-descriptors-specification
+/// Microsoft OS 2.0 descriptor, according to https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/microsoft-os-2-0-descriptors-specification
 ///
 /// For interface ['DAP_V2_INTERFACE'] this configures:
 /// - compatible ID 'WinUSB'
-/// - registry property DeviceInterfaceGUIS = ['{CDB3B5AD-293B-4663-AA36-1AAE46463776}']
+/// - registry property DeviceInterfaceGUIDs = ['{CDB3B5AD-293B-4663-AA36-1AAE46463776}']
 ///
 /// For interface ['DFU_INTERFACE']:
 /// - compatible ID 'WinUSB'
-/// - registry property DeviceInterfaceGUIS = ['{A5DCBF10-6530-11D2-901F-00C04FB951ED}']
+/// - registry property DeviceInterfaceGUIDs = ['{A5DCBF10-6530-11D2-901F-00C04FB951ED}']
 const MS_OS_DESCRIPTOR: [u8; LEN as usize] = [
     0xa,
     0x00, // Length 10 bytes
