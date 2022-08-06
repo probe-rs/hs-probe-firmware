@@ -14,6 +14,7 @@ impl RCC {
     ///
     /// Unsafety: this function should be called from the main context.
     /// No other contexts should be active at the same time.
+    #[allow(clippy::missing_safety_doc)]
     pub unsafe fn setup(&self, frequency: CoreFrequency) -> Clocks {
         // Turn on HSI
         modify_reg!(rcc, self.rcc, CR, HSION: On);

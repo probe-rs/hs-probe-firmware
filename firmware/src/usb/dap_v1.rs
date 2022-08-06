@@ -65,7 +65,7 @@ impl<B: UsbBus> CmsisDapV1<'_, B> {
         if data.len() > self.write_ep.max_packet_size() as usize {
             return Err(UsbError::BufferOverflow);
         }
-        self.write_ep.write(&data).map(|_| ())
+        self.write_ep.write(data).map(|_| ())
     }
 }
 

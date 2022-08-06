@@ -18,6 +18,7 @@ pub type Result<T> = core::result::Result<T, Error>;
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, IntoPrimitive)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum DPRegister {
     DPIDR = 0,
     CTRLSTAT = 1,
@@ -25,6 +26,7 @@ pub enum DPRegister {
     RDBUFF = 3,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 pub struct SWD<'a> {
     spi: &'a SPI,
     pins: &'a Pins<'a>,
@@ -60,6 +62,7 @@ enum RnW {
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug)]
+#[allow(clippy::upper_case_acronyms)]
 enum ACK {
     OK = 0b001,
     WAIT = 0b010,

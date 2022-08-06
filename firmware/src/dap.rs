@@ -2,7 +2,7 @@
 // Dual licensed under the Apache 2.0 and MIT licenses.
 
 use crate::{
-    bsp::{gpio::Pins, uart::UART, rcc::Clocks},
+    bsp::{gpio::Pins, rcc::Clocks, uart::UART},
     jtag, swd, DAP1_PACKET_SIZE, DAP2_PACKET_SIZE,
 };
 use core::convert::{TryFrom, TryInto};
@@ -98,6 +98,7 @@ enum HostStatusType {
 
 #[derive(Copy, Clone, TryFromPrimitive)]
 #[repr(u8)]
+#[allow(clippy::upper_case_acronyms)]
 enum ConnectPort {
     Default = 0,
     SWD = 1,
@@ -105,6 +106,7 @@ enum ConnectPort {
 }
 
 #[repr(u8)]
+#[allow(clippy::upper_case_acronyms)]
 enum ConnectPortResponse {
     Failed = 0,
     SWD = 1,
@@ -121,6 +123,7 @@ enum SWOTransport {
 
 #[derive(TryFromPrimitive)]
 #[repr(u8)]
+#[allow(clippy::upper_case_acronyms)]
 enum SWOMode {
     Off = 0,
     UART = 1,
@@ -168,7 +171,7 @@ impl<'a> Request<'a> {
     }
 
     pub fn rest(self) -> &'a [u8] {
-        &self.data
+        self.data
     }
 }
 
@@ -201,7 +204,7 @@ impl<'a> ResponseWriter<'a> {
     }
 
     pub fn write_slice(&mut self, data: &[u8]) {
-        self.buf[self.idx..self.idx + data.len()].copy_from_slice(&data);
+        self.buf[self.idx..self.idx + data.len()].copy_from_slice(data);
         self.idx += data.len();
     }
 
@@ -239,11 +242,13 @@ impl<'a> ResponseWriter<'a> {
     }
 }
 
+#[allow(clippy::upper_case_acronyms)]
 enum DAPMode {
     SWD,
     JTAG,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 pub struct DAP<'a> {
     swd: swd::SWD<'a>,
     jtag: jtag::JTAG<'a>,
@@ -512,7 +517,7 @@ impl<'a> DAP<'a> {
             }
 
             // When not in any mode, ignore JTAG/SWD pins entirely.
-            None => ()
+            None => (),
         };
 
         // Always allow setting the nRESET pin, which is always in output open-drain mode.
@@ -681,7 +686,7 @@ impl<'a> DAP<'a> {
         }
 
         // Read data from UART
-        let len = self.uart.read(&mut buf);
+        let len = self.uart.read(buf);
         resp.skip(len);
 
         // Go back and write length

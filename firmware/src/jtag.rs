@@ -15,6 +15,7 @@ struct JTAGPins<'a> {
     tdi: &'a Pin<'a>,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 pub struct JTAG<'a> {
     spi: &'a SPI,
     dma: &'a DMA,
@@ -168,7 +169,7 @@ impl<'a> JTAG<'a> {
 
                 self.spi_mode();
                 self.spi
-                    .jtag_exchange(&self.dma, &buffer[..buffer_idx], &mut rxbuf[rxidx..]);
+                    .jtag_exchange(self.dma, &buffer[..buffer_idx], &mut rxbuf[rxidx..]);
                 if capture != 0 {
                     rxidx += buffer_idx;
                 }
