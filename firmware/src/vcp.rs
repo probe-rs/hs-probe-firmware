@@ -32,6 +32,7 @@ impl Default for VcpConfig {
     }
 }
 
+#[allow(clippy::upper_case_acronyms)]
 pub struct VCP<'a> {
     uart: usart::Instance,
     pins: &'a Pins<'a>,
@@ -230,7 +231,7 @@ impl<'a> VCP<'a> {
     }
     /// Start DMA transfer from buffer to TX Shift register.
     pub fn write(&mut self, tx: &[u8], len: usize) {
-        self.tx_buffer[0..len].copy_from_slice(&tx);
+        self.tx_buffer[0..len].copy_from_slice(tx);
         self.dma.usart2_start_tx_transfer(&self.tx_buffer, len);
     }
 }

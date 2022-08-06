@@ -63,6 +63,7 @@ static mut EP_MEMORY: [u32; 4096] = [0; 4096];
 static mut USB_BUS: Option<UsbBusAllocator<UsbBusType>> = None;
 
 /// USB stack interface
+#[allow(clippy::upper_case_acronyms)]
 pub struct USB {
     state: State,
 }
@@ -107,12 +108,12 @@ impl USB {
 
                 // Order of these calls is important, if the interface numbers for CmsisDapV2 or DfuRuntime change,
                 // definitions in winusb.rs (DAP_V2_INTERFACE, DFU_INTERFACE) have to be adapted!
-                let serial = SerialPort::new(&usb_bus);
-                let dap_v1 = CmsisDapV1::new(&usb_bus);
-                let dap_v2 = CmsisDapV2::new(&usb_bus);
-                let dfu = DfuRuntime::new(&usb_bus);
+                let serial = SerialPort::new(usb_bus);
+                let dap_v1 = CmsisDapV1::new(usb_bus);
+                let dap_v2 = CmsisDapV2::new(usb_bus);
+                let dfu = DfuRuntime::new(usb_bus);
 
-                let device = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x1209, 0x4853))
+                let device = UsbDeviceBuilder::new(usb_bus, UsbVidPid(0x1209, 0x4853))
                     .manufacturer("Probe-rs development team")
                     .product("HS-Probe with CMSIS-DAP Support")
                     .serial_number(serial_string)

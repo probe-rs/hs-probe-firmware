@@ -36,7 +36,7 @@ impl<B: UsbBus> CmsisDapV2<'_, B> {
         if data.len() > self.write_ep.max_packet_size() as usize {
             return Err(UsbError::BufferOverflow);
         }
-        self.write_ep.write(&data).map(|_| ())
+        self.write_ep.write(data).map(|_| ())
     }
 
     pub fn trace_busy(&self) -> bool {
@@ -47,7 +47,7 @@ impl<B: UsbBus> CmsisDapV2<'_, B> {
         if data.len() > self.trace_ep.max_packet_size() as usize {
             return Err(UsbError::BufferOverflow);
         }
-        self.trace_ep.write(&data).map(|_| ())?;
+        self.trace_ep.write(data).map(|_| ())?;
         self.trace_busy = true;
         Ok(())
     }
