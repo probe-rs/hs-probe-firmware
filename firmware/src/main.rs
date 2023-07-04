@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+use bsp::{cortex_m, stm32ral};
 use cortex_m_rt::{entry, pre_init};
 use git_version::git_version;
 pub use hs_probe_bsp as bsp;

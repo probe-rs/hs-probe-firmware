@@ -4,7 +4,7 @@
 use core::cmp::Ordering;
 
 use crate::{
-    bsp::{dma::DMA, gpio::Pins, rcc::Clocks},
+    bsp::{dma::DMA, gpio::Pins, rcc::Clocks, stm32ral},
     VCP_PACKET_SIZE,
 };
 

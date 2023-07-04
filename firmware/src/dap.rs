@@ -2,7 +2,7 @@
 // Dual licensed under the Apache 2.0 and MIT licenses.
 
 use crate::{
-    bsp::{gpio::Pins, rcc::Clocks, uart::UART},
+    bsp::{cortex_m, gpio::Pins, rcc::Clocks, uart::UART},
     jtag, swd, DAP1_PACKET_SIZE, DAP2_PACKET_SIZE,
 };
 use core::convert::{TryFrom, TryInto};
