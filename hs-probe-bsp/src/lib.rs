@@ -1,5 +1,8 @@
 #![no_std]
 
+pub use cortex_m;
+pub use stm32ral;
+
 pub mod bootload;
 pub mod delay;
 pub mod dma;

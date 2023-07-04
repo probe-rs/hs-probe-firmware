@@ -1,8 +1,9 @@
 use crate::app::Request;
+use crate::bsp::cortex_m;
+use crate::bsp::stm32ral::{otg_hs_device, otg_hs_global, otg_hs_pwrclk, usbphyc};
 use crate::VCP_PACKET_SIZE;
 use hs_probe_bsp::otg_hs::{UsbBus, UsbBusType};
 use hs_probe_bsp::rcc::Clocks;
-use stm32ral::{otg_hs_device, otg_hs_global, otg_hs_pwrclk, usbphyc};
 use usb_device::bus::UsbBusAllocator;
 use usb_device::prelude::*;
 use usbd_serial::{LineCoding, SerialPort};
