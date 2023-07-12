@@ -5,6 +5,12 @@ for DAPv1 and DAPv2 over high-speed (480 MBit/s) USB 2.0.
 
 ## Building the firmware
 
+Make sure your toolchain has support for the microcontroller archtiecture:
+```
+rustup target install thumbv7em-none-eabihf
+```
+
+Then you should be ready to build the firmware:
 ```
 cargo build --release
 ```
