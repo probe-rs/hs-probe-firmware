@@ -291,7 +291,8 @@ impl SPI {
     /// Perform an 8-bit write to DR
     #[inline(always)]
     fn write_dr_u8(&self, data: u8) {
-        unsafe { core::ptr::write_volatile(&self.spi.DR as *const _ as *mut u8, data) };
+        let ptr = &self.spi.DR as *const _;
+        unsafe { core::ptr::write_volatile(ptr as *mut u8, data) };
     }
 
     /// Perform a 16-bit write to DR
@@ -299,6 +300,7 @@ impl SPI {
     /// Note that in 8-bit or smaller data mode, this enqueues two transmissions.
     #[inline(always)]
     fn write_dr_u16(&self, data: u16) {
-        unsafe { core::ptr::write_volatile(&self.spi.DR as *const _ as *mut u16, data) };
+        let ptr = &self.spi.DR as *const _;
+        unsafe { core::ptr::write_volatile(ptr as *mut u16, data) };
     }
 }
